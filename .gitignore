@@ -1,0 +1,11 @@
+artifacts
+mock_tokens
+/node_modules/
+.idea
+deploy.txt
+config.js
+config-pools.js
+migrations
+build
+.DS_Store
+test
