@@ -35,6 +35,7 @@ contract UserProfile is InitializableOwner, ERC721Holder {
     bool public _can_replace;
 
     uint public nicknameMaxLength;
+    uint public nicknameMinLength;
 
 
     constructor() public{
@@ -86,14 +87,24 @@ contract UserProfile is InitializableOwner, ERC721Holder {
         _can_replace = replace;
     }
 
+    function updateNicknameMaxLength(uint256 newLength) public onlyOwner {
+        require(newLength > nicknameMinLength, "bad number");
+        nicknameMaxLength = newLength;
+    }
+
+    function updateNicknameMinLength(uint256 newLength) public onlyOwner {
+        require(newLength > 0, "bad number");
+        nicknameMinLength = newLength;
+    }
+
     function checkNickname(string memory nickname) public view returns (bool) {
         bytes memory bt = bytes(nickname);
-        if (bt.length > nicknameMaxLength) {
+        if (bt.length > nicknameMaxLength || bt.length < nicknameMinLength) {
             return false;
         }
         
         for (uint i = 0; i < bt.length; ++i) {
-            if(bt[i] == '#' || bt[i] == '%') {
+            if(bt[i] == '#' || bt[i] == '%' || bt[i] == '@') {
                 return false;
             }
         }
