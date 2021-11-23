@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../interfaces/IERC20Metadata.sol";
+import "./PoolVault.sol";
 
 
 contract MutiRewardPool is Ownable, IERC20 {
@@ -83,6 +84,7 @@ contract MutiRewardPool is Ownable, IERC20 {
     IERC20 public depositToken;
     IERC20 public rewardToken0;
     IERC20 public rewardToken1;
+    PoolVault public poolVault;
 
     // uint256 public maxStaking;
 
@@ -144,6 +146,9 @@ contract MutiRewardPool is Ownable, IERC20 {
         token1RewardPerBlock = _token1RewardPerBlock;
         startBlock = _startBlock;
         bonusEndBlock = _bonusEndBlock;
+
+        poolVault = new PoolVault();
+        poolVault.approve(address(depositToken));
     }
 
     function stopReward() public onlyOwner {
@@ -305,9 +310,9 @@ contract MutiRewardPool is Ownable, IERC20 {
 
         updatePool(pid);
 
-        uint256 oldBal = pool.lpToken.balanceOf(address(this));
-        pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
-        _amount = pool.lpToken.balanceOf(address(this)).sub(oldBal);
+        uint256 oldBal = pool.lpToken.balanceOf(address(poolVault));
+        pool.lpToken.safeTransferFrom(address(msg.sender), address(poolVault), _amount);
+        _amount = pool.lpToken.balanceOf(address(poolVault)).sub(oldBal);
 
         lastStakingId++;
         totalDeposit = totalDeposit.add(_amount);
@@ -382,14 +387,15 @@ contract MutiRewardPool is Ownable, IERC20 {
         require(user.stakingIds.contains(_stakingId), "not the staking owner");
         StakingInfo storage staking = stakingInfo[_stakingId];
         PoolInfo storage pool = poolInfo[staking.pid];
-        require(block.number.sub(staking.time) >= pool.duration, "not time");
+
+        require(block.timestamp.sub(staking.time) >= pool.duration, "not time");
 
         harvest(_stakingId);
 
         uint256 _amount = staking.amount;
         staking.amount = 0;
         totalDeposit = totalDeposit.sub(_amount);
-        pool.lpToken.safeTransfer(address(msg.sender), _amount);
+        pool.lpToken.safeTransferFrom(address(poolVault), address(msg.sender), _amount);
         
         staking.token0RewardDebt = _amount.mul(pool.token0AccRewardsPerShare).add(_amount.mul(pool.token0AccAdditionalRewardsPerShare)).div(1e12);
         staking.token1RewardDebt = _amount.mul(pool.token1AccRewardsPerShare).add(_amount.mul(pool.token1AccAdditionalRewardsPerShare)).div(1e12);
@@ -421,7 +427,7 @@ contract MutiRewardPool is Ownable, IERC20 {
 
         user.stakingIds.remove(_stakingId);
 
-        pool.lpToken.safeTransfer(address(msg.sender), amount);
+        pool.lpToken.safeTransferFrom(address(poolVault), address(msg.sender), amount);
 
         emit EmergencyWithdraw(msg.sender,  staking.pid, _stakingId, amount);
         emit Transfer(msg.sender, address(0), amount);
