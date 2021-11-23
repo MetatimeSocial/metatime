@@ -17,6 +17,9 @@ contract MutiRewardPool is Ownable, IERC20 {
 
     using EnumerableSet for EnumerableSet.UintSet;
 
+    using EnumerableSet for EnumerableSet.AddressSet;
+    EnumerableSet.AddressSet private _callers;
+
     // Info of each user.
     struct UserInfo {
         EnumerableSet.UintSet stakingIds;
@@ -507,7 +510,7 @@ contract MutiRewardPool is Ownable, IERC20 {
         }
     }
 
-    function addAdditionalRewards(IERC20 token, uint256 amount, uint256 rewardsBlocks) public {
+    function addAdditionalRewards(IERC20 token, uint256 amount, uint256 rewardsBlocks) public onlyCaller {
         require(token == rewardToken0 || token == rewardToken1, "not support token");
 
         massUpdatePools();
@@ -716,4 +719,34 @@ contract MutiRewardPool is Ownable, IERC20 {
         revert("can not allow transfer");
     }
 
+
+    /******************************   Caller   ******************************/
+
+    modifier onlyCaller() {
+        require(isCaller(msg.sender), "Treasury: not the caller");
+        _;
+    }
+
+    function addCaller(address _newCaller) public onlyOwner returns (bool) {
+        require(_newCaller != address(0), "MutiRewardPool: address is zero");
+        return EnumerableSet.add(_callers, _newCaller);
+    }
+
+    function delCaller(address _delCaller) public onlyOwner returns (bool) {
+        require(_delCaller != address(0), "MutiRewardPool: address is zero");
+        return EnumerableSet.remove(_callers, _delCaller);
+    }
+
+    function getCallerLength() public view returns (uint256) {
+        return EnumerableSet.length(_callers);
+    }
+
+    function isCaller(address _caller) public view returns (bool) {
+        return EnumerableSet.contains(_callers, _caller);
+    }
+
+    function getCaller(uint256 _index) public view returns (address) {
+        require(_index <= getCallerLength() - 1, "MutiRewardPool: index out of bounds");
+        return EnumerableSet.at(_callers, _index);
+    }
 }
