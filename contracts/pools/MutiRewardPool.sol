@@ -31,6 +31,7 @@ contract MutiRewardPool is Ownable, IERC20 {
 
     struct StakingView {
         uint256 pid;
+        uint256 stakingId;
         uint256 amount;     // How many LP tokens the user has provided.
         uint256 token0UnclaimedRewards;
         uint256 token1UnclaimedRewards;
@@ -71,6 +72,12 @@ contract MutiRewardPool is Ownable, IERC20 {
         string lpSymbol;
         string lpName;
         uint8 lpDecimals;
+        string rewardToken0Symbol;
+        string rewardToken0Name;
+        uint8 rewardToken0Decimals;
+        string rewardToken1Symbol;
+        string rewardToken1Name;
+        uint8 rewardToken1Decimals;
     }
 
     IERC20 public depositToken;
@@ -255,6 +262,10 @@ contract MutiRewardPool is Ownable, IERC20 {
                 uint256 additionalTokenReward = additionalMultiplier.mul(token0AdditionalRewardPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
                 pool.token0AccAdditionalRewardsPerShare = pool.token0AccAdditionalRewardsPerShare.add(additionalTokenReward.mul(1e12).div(lpSupply));
             }
+
+            if (block.number >= token0AdditionalRewardEndBlock) {
+                token0AdditionalRewardPerBlock = 0;
+            }
         }
         
         uint256 token1Reward = multiplier.mul(token1RewardPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
@@ -265,6 +276,10 @@ contract MutiRewardPool is Ownable, IERC20 {
                 uint256 additionalMultiplier = getMultiplier(pool.lastRewardBlock, endBlock);
                 uint256 additionalTokenReward = additionalMultiplier.mul(token1AdditionalRewardPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
                 pool.token1AccAdditionalRewardsPerShare = pool.token1AccAdditionalRewardsPerShare.add(additionalTokenReward.mul(1e12).div(lpSupply));
+            }
+
+            if (block.number >= token1AdditionalRewardEndBlock) {
+                token1AdditionalRewardPerBlock = 0;
             }
         }
 
@@ -571,7 +586,13 @@ contract MutiRewardPool is Ownable, IERC20 {
                 token1AdditionalRewardPerBlock: additionalRewardsPerBlock1,
                 lpSymbol: symbol,
                 lpName: name,
-                lpDecimals: decimals
+                lpDecimals: decimals,
+                rewardToken0Symbol: IERC20Metadata(address(rewardToken0)).symbol(),
+                rewardToken0Name: IERC20Metadata(address(rewardToken0)).name(),
+                rewardToken0Decimals: IERC20Metadata(address(rewardToken0)).decimals(),
+                rewardToken1Symbol: IERC20Metadata(address(rewardToken1)).symbol(),
+                rewardToken1Name: IERC20Metadata(address(rewardToken1)).name(),
+                rewardToken1Decimals: IERC20Metadata(address(rewardToken1)).decimals()
             });
     }
 
@@ -591,6 +612,7 @@ contract MutiRewardPool is Ownable, IERC20 {
 
         return StakingView({
             pid: staking.pid,
+            stakingId: stakingId,
             amount: staking.amount,
             token0UnclaimedRewards: token0UnclaimedRewards,
             token1UnclaimedRewards: token1UnclaimedRewards,
