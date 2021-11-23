@@ -19,7 +19,7 @@ contract CashierDesk is InitializableOwner {
         uint256 value,
         uint256 timestamp
     );
-    
+
     event WithdrawToken(
         address indexed sender,
         address indexed token,
@@ -73,6 +73,16 @@ contract CashierDesk is InitializableOwner {
 
     function removeAdmin(address ad) public onlyOwner returns (bool) {
         _admin.remove(ad);
+    }
+
+    function listAdmin() public view onlyOwner returns (address[] memory) {
+        uint256 len = _admin.length();
+        address[] memory ls = new address[](len);
+
+        for (uint256 i = 0; i < len; ++i) {
+            ls[i] = _admin.at(i);
+        }
+        return ls;
     }
 
     function chargeToken(address token, uint256 amount) public returns (bool) {
