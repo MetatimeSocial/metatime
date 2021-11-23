@@ -29,6 +29,15 @@ contract MutiRewardPool is Ownable, IERC20 {
         uint256 time; //Pledge start time
     }
 
+    struct StakingView {
+        uint256 pid;
+        uint256 amount;     // How many LP tokens the user has provided.
+        uint256 token0UnclaimedRewards;
+        uint256 token1UnclaimedRewards;
+        uint256 time; //Pledge start time
+        uint256 unlockTime;
+    }
+
     // Info of each pool.
     struct PoolInfo {
         IERC20 lpToken;           // Address of LP token contract.
@@ -41,6 +50,27 @@ contract MutiRewardPool is Ownable, IERC20 {
         uint256 token1AccAdditionalRewardsPerShare; // Accumulated Additional RewardTokens per share, times 1e12. See below.
         uint256 token0AccDonateAmount;
         uint256 token1AccDonateAmount;
+    }
+
+    struct PoolView {
+        uint256 pid;
+        address lpToken;
+        uint256 duration; 
+        uint256 allocPoint;       // How many allocation points assigned to this pool. Tokens to distribute per block.
+        uint256 lastRewardBlock;  // Last block number that Tokens distribution occurs.
+        uint256 token0AccRewardsPerShare; // Accumulated RewardTokens per share, times 1e12. See below.
+        uint256 token1AccRewardsPerShare; // Accumulated RewardTokens per share, times 1e12. See below.
+        uint256 token0AccAdditionalRewardsPerShare; // Accumulated Additional RewardTokens per share, times 1e12. See below.
+        uint256 token1AccAdditionalRewardsPerShare; // Accumulated Additional RewardTokens per share, times 1e12. See below.
+        uint256 token0AccDonateAmount;
+        uint256 token1AccDonateAmount;
+        uint256 token0RewardsPerBlock;
+        uint256 token1RewardsPerBlock;
+        uint256 token0AdditionalRewardPerBlock;
+        uint256 token1AdditionalRewardPerBlock;
+        string lpSymbol;
+        string lpName;
+        uint8 lpDecimals;
     }
 
     IERC20 public depositToken;
@@ -154,7 +184,7 @@ contract MutiRewardPool is Ownable, IERC20 {
     }
 
     // View function to see token0 pending Reward on frontend.
-    function token0PendingReward(uint256 _stakingId) external view returns (uint256) {
+    function token0PendingReward(uint256 _stakingId) public view returns (uint256) {
         PoolInfo storage pool = poolInfo[0];
         StakingInfo storage user = stakingInfo[_stakingId];
         uint256 accRewardsPerShare = pool.token0AccRewardsPerShare.add(pool.token0AccAdditionalRewardsPerShare);
@@ -179,7 +209,7 @@ contract MutiRewardPool is Ownable, IERC20 {
     }
 
     // View function to see token1 pending Reward on frontend.
-    function token1PendingReward(uint256 _stakingId) external view returns (uint256) {
+    function token1PendingReward(uint256 _stakingId) public view returns (uint256) {
         PoolInfo storage pool = poolInfo[0];
         StakingInfo storage user = stakingInfo[_stakingId];
         uint256 accRewardsPerShare = pool.token1AccRewardsPerShare.add(pool.token1AccAdditionalRewardsPerShare);
@@ -474,6 +504,113 @@ contract MutiRewardPool is Ownable, IERC20 {
                 token1AdditionalRewardEndBlock = startBlock.add(rewardsBlocks);
             }
         }
+    }
+
+    function getBaseInfo() public view 
+    returns (
+        address depositToken_, 
+        address rewardToken0_, 
+        address rewardToken1_, 
+        uint256 token0RewardPerBlock_,
+        uint256 token1RewardPerBlock_,
+        uint256 token0AdditionalRewardPerBlock_,
+        uint256 token1AdditionalRewardPerBlock_,
+        uint256 token0AdditionalRewardEndBlock_,
+        uint256 token1AdditionalRewardEndBlock_,
+        uint256 totalDeposit_,
+        uint256 totalAllocPoint_,
+        uint256 startBlock_,
+        uint256 bonusEndBlock_
+    ) {
+        depositToken_ = address(depositToken);
+        rewardToken0_ = address(rewardToken0_);
+        rewardToken1_ = address(rewardToken1_);
+        token0RewardPerBlock_ = token0RewardPerBlock;
+        token1RewardPerBlock_ = token1RewardPerBlock;
+        token0AdditionalRewardPerBlock_ = token0AdditionalRewardPerBlock;
+        token1AdditionalRewardPerBlock_ = token1AdditionalRewardPerBlock;
+        token0AdditionalRewardEndBlock_ = token0AdditionalRewardEndBlock;
+        token1AdditionalRewardEndBlock_ = token1AdditionalRewardEndBlock;
+        totalDeposit_ = totalDeposit;
+        totalAllocPoint_ = totalAllocPoint;
+        startBlock_ = startBlock;
+        bonusEndBlock_ = bonusEndBlock;
+    }
+
+    function getPoolView(uint256 pid) public view returns(PoolView memory) {
+        require(pid < poolInfo.length, "MutiRewardPool: pid out of range");
+
+        PoolInfo memory pool = poolInfo[pid];
+
+        string memory symbol = IERC20Metadata(address(pool.lpToken)).symbol();
+        string memory name = IERC20Metadata(address(pool.lpToken)).name();
+        uint8 decimals = IERC20Metadata(address(pool.lpToken)).decimals();
+
+        uint256 rewardsPerBlock0 = pool.allocPoint.mul(token0RewardPerBlock).div(totalAllocPoint);
+        uint256 rewardsPerBlock1 = pool.allocPoint.mul(token1RewardPerBlock).div(totalAllocPoint);
+
+        uint256 additionalRewardsPerBlock0 = pool.allocPoint.mul(token0AdditionalRewardPerBlock).div(totalAllocPoint);
+        uint256 additionalRewardsPerBlock1 = pool.allocPoint.mul(token1AdditionalRewardPerBlock).div(totalAllocPoint);
+
+        return
+            PoolView({
+                pid: pid,
+                lpToken: address(pool.lpToken),
+                duration: pool.duration,
+                allocPoint: pool.allocPoint,
+                lastRewardBlock: pool.lastRewardBlock,
+                token0AccRewardsPerShare: pool.token0AccRewardsPerShare,
+                token1AccRewardsPerShare: pool.token1AccRewardsPerShare,
+                token0AccAdditionalRewardsPerShare: pool.token0AccAdditionalRewardsPerShare,
+                token1AccAdditionalRewardsPerShare: pool.token1AccAdditionalRewardsPerShare,
+                token0AccDonateAmount: pool.token0AccDonateAmount,
+                token1AccDonateAmount: pool.token1AccDonateAmount,
+                token0RewardsPerBlock: rewardsPerBlock0,
+                token1RewardsPerBlock: rewardsPerBlock1,
+                token0AdditionalRewardPerBlock: additionalRewardsPerBlock0,
+                token1AdditionalRewardPerBlock: additionalRewardsPerBlock1,
+                lpSymbol: symbol,
+                lpName: name,
+                lpDecimals: decimals
+            });
+    }
+
+    function getAllPoolViews() external view returns (PoolView[] memory) {
+        PoolView[] memory views = new PoolView[](poolInfo.length);
+        for (uint256 i = 0; i < poolInfo.length; i++) {
+            views[i] = getPoolView(i);
+        }
+        return views;
+    }
+
+    function getStakingView(uint256 stakingId) public view returns(StakingView memory) {
+        StakingInfo memory staking = stakingInfo[stakingId];
+
+        uint256 token0UnclaimedRewards = token0PendingReward(stakingId);
+        uint256 token1UnclaimedRewards = token1PendingReward(stakingId);
+
+        return StakingView({
+            pid: staking.pid,
+            amount: staking.amount,
+            token0UnclaimedRewards: token0UnclaimedRewards,
+            token1UnclaimedRewards: token1UnclaimedRewards,
+            time: staking.time,
+            unlockTime: poolInfo[staking.pid].duration.add(staking.time)
+        });
+
+    }
+
+    function getStakingViews(address account) public view returns(StakingView[] memory) {
+        UserInfo storage user = userInfo[account];
+
+        uint256 len = user.stakingIds.length();
+
+        StakingView[] memory views = new StakingView[](len);
+
+        for (uint i = 0; i < len; ++i) {
+            views[i] = getStakingView(user.stakingIds.at(i));
+        }
+        return views;
     }
 
     /******************************   ERC20   ******************************/
