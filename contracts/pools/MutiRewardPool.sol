@@ -330,6 +330,30 @@ contract MutiRewardPool is Ownable, IERC20 {
         emit Transfer(address(0), msg.sender, _amount);
     }
 
+    function harvestAll() public {
+        UserInfo storage user = userInfo[msg.sender];
+
+        uint256 len = user.stakingIds.length();
+
+        for(uint256 i = 0; i < len; ++i) {
+            harvest(user.stakingIds.at(i));
+        }
+    }
+
+    function harvestPool(uint256 pid) public {
+        UserInfo storage user = userInfo[msg.sender];
+
+        uint256 len = user.stakingIds.length();
+
+        for(uint256 i = 0; i < len; ++i) {
+            uint256 id = user.stakingIds.at(i);
+            if (id != pid) {
+                continue;
+            }
+            harvest(id);
+        }
+    }
+
     function harvest(uint256 _stakingId) public {
         
         UserInfo storage user = userInfo[msg.sender];
