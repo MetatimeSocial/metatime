@@ -43,6 +43,7 @@ contract MutiRewardPool is Ownable, IERC20 {
     // Info of each pool.
     struct PoolInfo {
         IERC20 lpToken;           // Address of LP token contract.
+        uint256 totalDeposit;
         uint256 duration;           //The duration of minimum pledge time.
         uint256 allocPoint;       // How many allocation points assigned to this pool. Tokens to distribute per block.
         uint256 lastRewardBlock;  // Last block number that Tokens distribution occurs.
@@ -57,6 +58,7 @@ contract MutiRewardPool is Ownable, IERC20 {
     struct PoolView {
         uint256 pid;
         address lpToken;
+        uint256 totalDeposit;
         uint256 duration; 
         uint256 allocPoint;       // How many allocation points assigned to this pool. Tokens to distribute per block.
         uint256 lastRewardBlock;  // Last block number that Tokens distribution occurs.
@@ -112,9 +114,6 @@ contract MutiRewardPool is Ownable, IERC20 {
 
     uint256 private lastStakingId;
 
-    // Total amount pledged by users
-    uint256 public totalDeposit;
-
     // Total allocation poitns. Must be the sum of all allocation points in all pools.
     uint256 private totalAllocPoint = 0;
 
@@ -151,9 +150,9 @@ contract MutiRewardPool is Ownable, IERC20 {
         poolVault.approve(address(depositToken));
     }
 
-    function stopReward() public onlyOwner {
-        bonusEndBlock = block.number;
-    }
+    // function stopReward() public onlyOwner {
+    //     bonusEndBlock = block.number;
+    // }
 
 
     // Return reward multiplier over the given _from to _to block.
@@ -181,6 +180,7 @@ contract MutiRewardPool is Ownable, IERC20 {
         // staking pool
         poolInfo.push(PoolInfo({
             lpToken: depositToken,
+            totalDeposit: 0,
             duration: _stakingDuration,
             allocPoint: _allocPoint,
             lastRewardBlock: block.number > startBlock? block.number: startBlock,
@@ -200,7 +200,7 @@ contract MutiRewardPool is Ownable, IERC20 {
         PoolInfo storage pool = poolInfo[0];
         StakingInfo storage user = stakingInfo[_stakingId];
         uint256 accRewardsPerShare = pool.token0AccRewardsPerShare.add(pool.token0AccAdditionalRewardsPerShare);
-        uint256 lpSupply = totalDeposit;
+        uint256 lpSupply = pool.totalDeposit;
 
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             
@@ -225,7 +225,7 @@ contract MutiRewardPool is Ownable, IERC20 {
         PoolInfo storage pool = poolInfo[0];
         StakingInfo storage user = stakingInfo[_stakingId];
         uint256 accRewardsPerShare = pool.token1AccRewardsPerShare.add(pool.token1AccAdditionalRewardsPerShare);
-        uint256 lpSupply = totalDeposit;
+        uint256 lpSupply = pool.totalDeposit;
 
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             
@@ -251,7 +251,7 @@ contract MutiRewardPool is Ownable, IERC20 {
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
-        uint256 lpSupply = totalDeposit;
+        uint256 lpSupply = pool.totalDeposit;
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
@@ -315,7 +315,7 @@ contract MutiRewardPool is Ownable, IERC20 {
         _amount = pool.lpToken.balanceOf(address(poolVault)).sub(oldBal);
 
         lastStakingId++;
-        totalDeposit = totalDeposit.add(_amount);
+        pool.totalDeposit = pool.totalDeposit.add(_amount);
 
         stakingInfo[lastStakingId] = StakingInfo({
             pid: pid,
@@ -394,7 +394,7 @@ contract MutiRewardPool is Ownable, IERC20 {
 
         uint256 _amount = staking.amount;
         staking.amount = 0;
-        totalDeposit = totalDeposit.sub(_amount);
+        pool.totalDeposit = pool.totalDeposit.sub(_amount);
         pool.lpToken.safeTransferFrom(address(poolVault), address(msg.sender), _amount);
         
         staking.token0RewardDebt = _amount.mul(pool.token0AccRewardsPerShare).add(_amount.mul(pool.token0AccAdditionalRewardsPerShare)).div(1e12);
@@ -416,10 +416,10 @@ contract MutiRewardPool is Ownable, IERC20 {
 
         uint256 amount = staking.amount;
         
-        if(totalDeposit >= staking.amount) {
-            totalDeposit = totalDeposit.sub(staking.amount);
+        if(pool.totalDeposit >= staking.amount) {
+            pool.totalDeposit = pool.totalDeposit.sub(staking.amount);
         } else {
-            totalDeposit = 0;
+            pool.totalDeposit = 0;
         }
         staking.amount = 0;
         staking.token0RewardDebt = 0;
@@ -538,7 +538,6 @@ contract MutiRewardPool is Ownable, IERC20 {
         uint256 token1AdditionalRewardPerBlock_,
         uint256 token0AdditionalRewardEndBlock_,
         uint256 token1AdditionalRewardEndBlock_,
-        uint256 totalDeposit_,
         uint256 totalAllocPoint_,
         uint256 startBlock_,
         uint256 bonusEndBlock_
@@ -552,7 +551,6 @@ contract MutiRewardPool is Ownable, IERC20 {
         token1AdditionalRewardPerBlock_ = token1AdditionalRewardPerBlock;
         token0AdditionalRewardEndBlock_ = token0AdditionalRewardEndBlock;
         token1AdditionalRewardEndBlock_ = token1AdditionalRewardEndBlock;
-        totalDeposit_ = totalDeposit;
         totalAllocPoint_ = totalAllocPoint;
         startBlock_ = startBlock;
         bonusEndBlock_ = bonusEndBlock;
@@ -577,6 +575,7 @@ contract MutiRewardPool is Ownable, IERC20 {
             PoolView({
                 pid: pid,
                 lpToken: address(pool.lpToken),
+                totalDeposit: pool.totalDeposit,
                 duration: pool.duration,
                 allocPoint: pool.allocPoint,
                 lastRewardBlock: pool.lastRewardBlock,
@@ -656,6 +655,10 @@ contract MutiRewardPool is Ownable, IERC20 {
     }
 
     function totalSupply() public view override returns (uint256) {
+        uint256 totalDeposit;
+        for(uint i = 0; i < poolInfo.length; ++i) {
+            totalDeposit = totalDeposit.add(poolInfo[i].totalDeposit.mul(poolInfo[i].allocPoint));
+        }
         return totalDeposit;
     }
 
