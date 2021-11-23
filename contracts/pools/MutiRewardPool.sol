@@ -538,8 +538,8 @@ contract MutiRewardPool is Ownable, IERC20 {
         uint256 bonusEndBlock_
     ) {
         depositToken_ = address(depositToken);
-        rewardToken0_ = address(rewardToken0_);
-        rewardToken1_ = address(rewardToken1_);
+        rewardToken0_ = address(rewardToken0);
+        rewardToken1_ = address(rewardToken1);
         token0RewardPerBlock_ = token0RewardPerBlock;
         token1RewardPerBlock_ = token1RewardPerBlock;
         token0AdditionalRewardPerBlock_ = token0AdditionalRewardPerBlock;
