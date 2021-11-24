@@ -13,12 +13,9 @@ import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "../governance/InitializableOwner.sol";
 import "../interfaces/IvDsgToken.sol";
 import "../interfaces/IBurnableERC20.sol";
+import "../pools/MutiRewardPool.sol";
 
-interface TimePool {
-    function donate_user(uint256 amount) external view returns (bool);
 
-    function donate_pool(uint256 amount) external view returns (bool);
-}
 
 contract TimeShop is InitializableOwner, ReentrancyGuard {
     using SafeMath for uint256;
@@ -35,7 +32,7 @@ contract TimeShop is InitializableOwner, ReentrancyGuard {
     IBurnableERC20 public m_dsg_token;
     IvDsgToken public m_vdsg_token;
     IERC20 public m_time_token;
-    TimePool public m_time_pool;
+    MutiRewardPool public m_time_pool;
 
     uint256 public total;
     uint256 public total_supply;
@@ -104,7 +101,7 @@ contract TimeShop is InitializableOwner, ReentrancyGuard {
         m_dsg_token = IBurnableERC20(_dsg_token);
         m_vdsg_token = IvDsgToken(_vdsg_token);
         m_time_token = IERC20(_time_token);
-        m_time_pool = TimePool(time_pool);
+        m_time_pool = MutiRewardPool(time_pool);
 
         total = 7_000_000_000_000_000 * (10**18);
         init_rate();
@@ -149,16 +146,16 @@ contract TimeShop is InitializableOwner, ReentrancyGuard {
         m_dsg_time_rate[8].right_now_release = 60 * m_base_rate;
         m_dsg_time_rate[9].right_now_release = 90 * m_base_rate;
 
-        m_dsg_time_rate[0].long_time = 60 seconds;
-        m_dsg_time_rate[1].long_time = 60 seconds;
-        m_dsg_time_rate[2].long_time = 60 seconds;
-        m_dsg_time_rate[3].long_time = 60 seconds;
-        m_dsg_time_rate[4].long_time = 60 seconds;
-        m_dsg_time_rate[5].long_time = 60 seconds;
-        m_dsg_time_rate[6].long_time = 60 seconds;
-        m_dsg_time_rate[7].long_time = 60 seconds;
-        m_dsg_time_rate[8].long_time = 60 seconds;
-        m_dsg_time_rate[9].long_time = 60 seconds;
+        m_dsg_time_rate[0].long_time = 48 * 30 days;
+        m_dsg_time_rate[1].long_time = 36 * 30 days;
+        m_dsg_time_rate[2].long_time = 24 * 30 days;
+        m_dsg_time_rate[3].long_time = 18 * 30 days;
+        m_dsg_time_rate[4].long_time = 12 * 30 days;
+        m_dsg_time_rate[5].long_time = 9 * 30 days;
+        m_dsg_time_rate[6].long_time = 6 * 30 days;
+        m_dsg_time_rate[7].long_time = 3 * 30 days;
+        m_dsg_time_rate[8].long_time = 2 * 30 days;
+        m_dsg_time_rate[9].long_time = 1 * 30 days;
     }
 
     function withdrawAll() public {
@@ -168,7 +165,7 @@ contract TimeShop is InitializableOwner, ReentrancyGuard {
         uint256 totalReceive = 0;
         uint256 length = ur.buys.length();
 
-        for (uint256 i = 0; i < length; ++i) {
+        for (uint256 i = 0; i < length;) {
             uint256 get_key = ur.buys.at(i);
             DebtRecord storage dr = ur.records[get_key];
 
@@ -180,6 +177,13 @@ contract TimeShop is InitializableOwner, ReentrancyGuard {
 
             dr.latestTime = block.timestamp;
             dr.debtAmount = dr.debtAmount.add(re);
+
+            if (dr.debtAmount == dr.totalAmount) {
+                ur.buys.remove(get_key);
+                length--;
+            } else {
+                i++;
+            }
 
             totalReceive = totalReceive.add(re);
         }
@@ -327,19 +331,40 @@ contract TimeShop is InitializableOwner, ReentrancyGuard {
 
     // dispath dsg token.
     function dispatchDSGToken(uint256 dsg_amount) internal returns (bool) {
-        uint256 burn_amount = dsg_amount.mul(m_burn_rate).div(m_100_percent);
-        uint256 donate_amount = dsg_amount.mul(m_vdsg_rate).div(m_100_percent);
 
+        // burn
+        uint256 burn_amount = dsg_amount.mul(m_burn_rate).div(m_100_percent);
         m_dsg_token.burn(burn_amount);
 
+        // donate to vdsg.
+        uint256 donate_amount = dsg_amount.mul(m_vdsg_rate).div(m_100_percent);
         m_dsg_token.approve(address(m_vdsg_token), donate_amount);
         m_vdsg_token.donate(donate_amount);
 
-        // time pool
-        // uint256 pool_now_amount = dsg_amount * m_vdsg_rate / m_100_percent;
-        // uint256 pool_slow_amount = dsg_amount * m_vdsg_rate / m_100_percent;
-        // m_time_pool.donate_user(pool_now_amount);
-        // m_time_pool.donate_pool(pool_slow_amount);
+        // donate time pool
+        uint256 pool_donate_amount = dsg_amount.mul(m_pool_now_rate).div(m_100_percent);
+        uint256 pool_slow_amount = dsg_amount.mul(m_pool_slow_rate).div(m_100_percent);
+
+        // only approve once for  donate, addAdditionalRewards
+        m_dsg_token.approve(address(m_time_pool), pool_slow_amount + pool_donate_amount);
+        m_time_pool.donate(m_dsg_token, pool_donate_amount);
+
+        // addAdditionalRewards time pool.  6 months , abount blocks: (1 * 60 * 60 * 24 * 30 * 6) / 3 = 5184000
+        
+        // consider token0 == dsg.
+        uint256 t0areb = 0;
+        if (m_dsg_token == m_time_pool.rewardToken0()) {
+            t0areb = m_time_pool.token0AdditionalRewardEndBlock();
+        }else if (m_dsg_token == m_time_pool.rewardToken1()) {
+            t0areb = m_time_pool.token1AdditionalRewardEndBlock();
+        }else{
+            require(false, "cant find dsg token.");
+        }
+
+        uint256 remainingBlocks = t0areb > block.number ? t0areb.sub(block.number) : 0;
+        remainingBlocks = 5184000 > remainingBlocks ? 5184000 - remainingBlocks : 5184000;
+      
+        m_time_pool.addAdditionalRewards(m_dsg_token, pool_slow_amount, remainingBlocks);
 
         return true;
     }

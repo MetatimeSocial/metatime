@@ -64,6 +64,7 @@ contract UserProfile is InitializableOwner, ERC721Holder {
         _can_withdraw = false;
         _can_replace = false;
         nicknameMaxLength = 30;
+        nicknameMinLength = 6;
     }
 
     function addSupportNFTaddress(address[] memory _nft_address) onlyOwner public {
@@ -160,7 +161,14 @@ contract UserProfile is InitializableOwner, ERC721Holder {
     function _setNickname(address user, string memory nickname) internal {
         require(checkNickname(nickname), "bad nickname");
         require(nicknames[nickname] == false, "nickname already used");
+        
+        nicknames[nickname] = true;
 
+        // reset old nickname.
+        if (Users[user].user_id != address(0)) {
+            nicknames[Users[user].nickname] = false;
+        }
+       
         Users[user].nickname = nickname;
     }
 
