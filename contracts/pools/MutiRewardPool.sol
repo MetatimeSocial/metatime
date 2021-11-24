@@ -205,6 +205,10 @@ contract MutiRewardPool is Ownable, IERC20 {
         uint256 accRewardsPerShare = pool.token0AccRewardsPerShare.add(pool.token0AccAdditionalRewardsPerShare);
         uint256 lpSupply = pool.totalDeposit;
 
+        if (user.amount == 0) {
+            return 0;
+        }
+
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
@@ -229,6 +233,10 @@ contract MutiRewardPool is Ownable, IERC20 {
         StakingInfo storage user = stakingInfo[_stakingId];
         uint256 accRewardsPerShare = pool.token1AccRewardsPerShare.add(pool.token1AccAdditionalRewardsPerShare);
         uint256 lpSupply = pool.totalDeposit;
+
+        if (user.amount == 0) {
+            return 0;
+        }
 
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             
