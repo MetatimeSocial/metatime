@@ -218,13 +218,13 @@ contract MutiRewardPool is Ownable, IERC20 {
             amount = user.amount.mul(accRewardsPerShare);
             
             uint256 endBlock = block.number > token0AdditionalRewardEndBlock? token0AdditionalRewardEndBlock : block.number;
+            uint256 accAdditionalRewardsPerShare = pool.token0AccAdditionalRewardsPerShare;
             if (endBlock > pool.lastRewardBlock) {
-                uint256 accAdditionalRewardsPerShare = pool.token0AccAdditionalRewardsPerShare;
                 uint256 additionalMultiplier = getMultiplier(pool.lastRewardBlock, endBlock);
                 uint256 additionalTokenReward = additionalMultiplier.mul(token0AdditionalRewardPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
                 accAdditionalRewardsPerShare = accAdditionalRewardsPerShare.add(additionalTokenReward.mul(1e12).div(lpSupply));
-                amount = amount.add(user.amount.mul(accAdditionalRewardsPerShare));
             }
+            amount = amount.add(user.amount.mul(accAdditionalRewardsPerShare));
         }
 
         return amount.div(1e12).sub(user.token0RewardDebt);
@@ -250,13 +250,13 @@ contract MutiRewardPool is Ownable, IERC20 {
             amount = user.amount.mul(accRewardsPerShare);
             
             uint256 endBlock = block.number > token1AdditionalRewardEndBlock? token1AdditionalRewardEndBlock : block.number;
+            uint256 accAdditionalRewardsPerShare = pool.token1AccAdditionalRewardsPerShare;
             if (endBlock > pool.lastRewardBlock) {
-                uint256 accAdditionalRewardsPerShare = pool.token1AccAdditionalRewardsPerShare;
                 uint256 additionalMultiplier = getMultiplier(pool.lastRewardBlock, endBlock);
                 uint256 additionalTokenReward = additionalMultiplier.mul(token1AdditionalRewardPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
                 accAdditionalRewardsPerShare = accAdditionalRewardsPerShare.add(additionalTokenReward.mul(1e12).div(lpSupply));
-                amount = amount.add(user.amount.mul(accAdditionalRewardsPerShare));
             }
+            amount = amount.add(user.amount.mul(accAdditionalRewardsPerShare));
         }
 
         return amount.div(1e12).sub(user.token0RewardDebt);
