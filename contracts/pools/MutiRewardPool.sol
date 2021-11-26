@@ -200,8 +200,9 @@ contract MutiRewardPool is Ownable, IERC20 {
 
     // View function to see token0 pending Reward on frontend.
     function token0PendingReward(uint256 _stakingId) public view returns (uint256) {
-        PoolInfo storage pool = poolInfo[0];
+        
         StakingInfo storage user = stakingInfo[_stakingId];
+        PoolInfo storage pool = poolInfo[user.pid];
         uint256 lpSupply = pool.totalDeposit;
 
         if (user.amount == 0) {
@@ -232,8 +233,8 @@ contract MutiRewardPool is Ownable, IERC20 {
 
     // View function to see token1 pending Reward on frontend.
     function token1PendingReward(uint256 _stakingId) public view returns (uint256) {
-        PoolInfo storage pool = poolInfo[0];
         StakingInfo storage user = stakingInfo[_stakingId];
+        PoolInfo storage pool = poolInfo[user.pid];
         uint256 lpSupply = pool.totalDeposit;
 
         if (user.amount == 0) {
