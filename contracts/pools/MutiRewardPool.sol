@@ -177,7 +177,7 @@ contract MutiRewardPool is Ownable, IERC20 {
     function addPool(
         uint256 _stakingDuration,
         uint256 _allocPoint
-    ) public {
+    ) public onlyOwner {
         massUpdatePools();
 
         // staking pool
