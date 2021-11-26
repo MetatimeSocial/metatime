@@ -513,6 +513,10 @@ contract MutiRewardPool is Ownable, IERC20 {
                 continue;
             }
 
+            if(pool.totalDeposit == 0) {
+                continue;
+            }
+
             uint256 tokenReward = realAmount.mul(1e12).mul(pool.allocPoint).div(totalAllocPoint);
             if (isToken0) {
                 pool.token0AccRewardsPerShare = pool.token0AccRewardsPerShare.add(tokenReward.div(pool.totalDeposit));
