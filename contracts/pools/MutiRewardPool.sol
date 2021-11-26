@@ -202,58 +202,64 @@ contract MutiRewardPool is Ownable, IERC20 {
     function token0PendingReward(uint256 _stakingId) public view returns (uint256) {
         PoolInfo storage pool = poolInfo[0];
         StakingInfo storage user = stakingInfo[_stakingId];
-        uint256 accRewardsPerShare = pool.token0AccRewardsPerShare.add(pool.token0AccAdditionalRewardsPerShare);
         uint256 lpSupply = pool.totalDeposit;
 
         if (user.amount == 0) {
             return 0;
         }
 
+        uint256 amount;
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             
+            uint256 accRewardsPerShare = pool.token0AccRewardsPerShare;
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
             uint256 tokenReward = multiplier.mul(token0RewardPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
             accRewardsPerShare = accRewardsPerShare.add(tokenReward.mul(1e12).div(lpSupply));
+            amount = user.amount.mul(accRewardsPerShare);
             
             uint256 endBlock = block.number > token0AdditionalRewardEndBlock? token0AdditionalRewardEndBlock : block.number;
             if (endBlock > pool.lastRewardBlock) {
+                uint256 accAdditionalRewardsPerShare = pool.token0AccAdditionalRewardsPerShare;
                 uint256 additionalMultiplier = getMultiplier(pool.lastRewardBlock, endBlock);
                 uint256 additionalTokenReward = additionalMultiplier.mul(token0AdditionalRewardPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-                accRewardsPerShare = accRewardsPerShare.add(additionalTokenReward.mul(1e12).div(lpSupply));
+                accAdditionalRewardsPerShare = accAdditionalRewardsPerShare.add(additionalTokenReward.mul(1e12).div(lpSupply));
+                amount = amount.add(user.amount.mul(accAdditionalRewardsPerShare));
             }
-            
         }
 
-        return user.amount.mul(accRewardsPerShare).div(1e12).sub(user.token0RewardDebt);
+        return amount.div(1e12).sub(user.token0RewardDebt);
     }
 
     // View function to see token1 pending Reward on frontend.
     function token1PendingReward(uint256 _stakingId) public view returns (uint256) {
         PoolInfo storage pool = poolInfo[0];
         StakingInfo storage user = stakingInfo[_stakingId];
-        uint256 accRewardsPerShare = pool.token1AccRewardsPerShare.add(pool.token1AccAdditionalRewardsPerShare);
         uint256 lpSupply = pool.totalDeposit;
 
         if (user.amount == 0) {
             return 0;
         }
 
+        uint256 amount;
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             
+            uint256 accRewardsPerShare = pool.token1AccRewardsPerShare;
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
             uint256 tokenReward = multiplier.mul(token1RewardPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
             accRewardsPerShare = accRewardsPerShare.add(tokenReward.mul(1e12).div(lpSupply));
+            amount = user.amount.mul(accRewardsPerShare);
             
             uint256 endBlock = block.number > token1AdditionalRewardEndBlock? token1AdditionalRewardEndBlock : block.number;
             if (endBlock > pool.lastRewardBlock) {
+                uint256 accAdditionalRewardsPerShare = pool.token1AccAdditionalRewardsPerShare;
                 uint256 additionalMultiplier = getMultiplier(pool.lastRewardBlock, endBlock);
                 uint256 additionalTokenReward = additionalMultiplier.mul(token1AdditionalRewardPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-                accRewardsPerShare = accRewardsPerShare.add(additionalTokenReward.mul(1e12).div(lpSupply));
+                accAdditionalRewardsPerShare = accAdditionalRewardsPerShare.add(additionalTokenReward.mul(1e12).div(lpSupply));
+                amount = amount.add(user.amount.mul(accAdditionalRewardsPerShare));
             }
-            
         }
 
-        return user.amount.mul(accRewardsPerShare).div(1e12).sub(user.token1RewardDebt);
+        return amount.div(1e12).sub(user.token0RewardDebt);
     }
 
     // Update reward variables of the given pool to be up-to-date.
