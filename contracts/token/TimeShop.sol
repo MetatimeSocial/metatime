@@ -202,10 +202,19 @@ contract TimeShop is InitializableOwner, ReentrancyGuard {
         uint256 get_key = ur.buys.at(idx);
         DebtRecord storage dr = ur.records[get_key];
 
+        if (dr.debtAmount == dr.totalAmount) {
+            return;
+        }
+
         uint256 re = establishTimeTokenRound(msg.sender, get_key);
 
         dr.latestTime = block.timestamp;
         dr.debtAmount = dr.debtAmount.add(re);
+
+        if (dr.debtAmount == dr.totalAmount) {
+            ur.buys.remove(get_key);
+        }
+
         total_supply = total_supply.add(re);
 
         m_time_token.safeTransfer(msg.sender, re);
@@ -213,13 +222,13 @@ contract TimeShop is InitializableOwner, ReentrancyGuard {
         emit Withdraw(msg.sender, re);
     }
 
-    function getReward() public view returns (uint256) {
+    function getReward(address sender) public view returns (uint256) {
         // storage .
-        UserRecord storage ur = users[msg.sender];
+        UserRecord storage ur = users[sender];
 
         uint256 totalReceive = 0;
         for (uint256 i = 0; i < ur.buys.length(); ++i) {
-            uint256 re = establishTimeTokenRound(msg.sender, ur.buys.at(i));
+            uint256 re = establishTimeTokenRound(sender, ur.buys.at(i));
 
             totalReceive = totalReceive.add(re);
         }
@@ -317,13 +326,12 @@ contract TimeShop is InitializableOwner, ReentrancyGuard {
 
         uint256 to_value = dr.totalAmount.mul(dttr.right_now_release).div(m_100_percent);
 
-        m_time_token.safeTransfer(msg.sender, to_value);
-
         dr.debtAmount = to_value;
         ur.records[block.timestamp] = dr;
 
         total_supply = total_supply.add(to_value);
 
+        m_time_token.safeTransfer(msg.sender, to_value);
         emit BuyTimeToken(msg.sender, dsg_amount, block.timestamp);
 
         return true;
