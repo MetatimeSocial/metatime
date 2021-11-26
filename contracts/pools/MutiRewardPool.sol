@@ -513,12 +513,12 @@ contract MutiRewardPool is Ownable, IERC20 {
                 continue;
             }
 
-            uint256 tokenReward = realAmount.mul(pool.allocPoint).div(totalAllocPoint);
+            uint256 tokenReward = realAmount.mul(1e12).mul(pool.allocPoint).div(totalAllocPoint);
             if (isToken0) {
-                pool.token0AccRewardsPerShare = pool.token0AccRewardsPerShare.add(tokenReward.mul(1e12).mul(pool.allocPoint).div(totalAllocPoint));
+                pool.token0AccRewardsPerShare = pool.token0AccRewardsPerShare.add(tokenReward.div(pool.totalDeposit));
                 pool.token0AccDonateAmount = pool.token0AccDonateAmount.add(tokenReward);
             } else {
-                pool.token1AccRewardsPerShare = pool.token1AccRewardsPerShare.add(tokenReward.mul(1e12).mul(pool.allocPoint).div(totalAllocPoint));
+                pool.token1AccRewardsPerShare = pool.token1AccRewardsPerShare.add(tokenReward.div(pool.totalDeposit));
                 pool.token1AccDonateAmount = pool.token0AccDonateAmount.add(tokenReward);
             }
             emit Donate(msg.sender, pid, address(token), donateAmount, realAmount);
