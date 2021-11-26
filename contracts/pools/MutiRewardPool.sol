@@ -259,7 +259,7 @@ contract MutiRewardPool is Ownable, IERC20 {
             amount = amount.add(user.amount.mul(accAdditionalRewardsPerShare));
         }
 
-        return amount.div(1e12).sub(user.token0RewardDebt);
+        return amount.div(1e12).sub(user.token1RewardDebt);
     }
 
     // Update reward variables of the given pool to be up-to-date.
