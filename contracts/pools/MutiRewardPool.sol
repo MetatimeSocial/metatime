@@ -365,7 +365,7 @@ contract MutiRewardPool is Ownable, IERC20 {
 
         for(uint256 i = 0; i < len; ++i) {
             uint256 id = user.stakingIds.at(i);
-            if (id != pid) {
+            if (stakingInfo[id].pid != pid) {
                 continue;
             }
             harvest(id);
@@ -525,7 +525,7 @@ contract MutiRewardPool is Ownable, IERC20 {
                 pool.token1AccRewardsPerShare = pool.token1AccRewardsPerShare.add(tokenReward.div(pool.totalDeposit));
                 pool.token1AccDonateAmount = pool.token0AccDonateAmount.add(tokenReward);
             }
-            emit Donate(msg.sender, pid, address(token), tokenReward, tokenReward);
+            emit Donate(msg.sender, pid, address(token), tokenReward.div(1e12), tokenReward.div(1e12));
         }
     }
 
