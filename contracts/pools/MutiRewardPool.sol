@@ -525,7 +525,7 @@ contract MutiRewardPool is Ownable, IERC20 {
                 pool.token1AccRewardsPerShare = pool.token1AccRewardsPerShare.add(tokenReward.div(pool.totalDeposit));
                 pool.token1AccDonateAmount = pool.token0AccDonateAmount.add(tokenReward);
             }
-            emit Donate(msg.sender, pid, address(token), donateAmount, realAmount);
+            emit Donate(msg.sender, pid, address(token), tokenReward, tokenReward);
         }
     }
 
