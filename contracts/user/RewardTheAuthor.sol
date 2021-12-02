@@ -27,7 +27,8 @@ contract RewardTheAuthor is InitializableOwner {
         address token,
         uint256 postType,
         uint64 postId,
-        uint256 amount
+        uint256 amount,
+        uint timestamp
     );
     event Claim(address indexed user, address token, uint256 amount);
 
@@ -110,7 +111,8 @@ contract RewardTheAuthor is InitializableOwner {
             address(token),
             postType,
             postId,
-            amount
+            amount,
+            block.timestamp
         );
     }
 
