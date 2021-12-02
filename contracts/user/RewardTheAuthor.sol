@@ -21,6 +21,7 @@ contract RewardTheAuthor is InitializableOwner {
     }
 
     event Reward(
+        uint256 indexed id,
         address indexed from,
         address indexed target,
         address token,
@@ -34,6 +35,7 @@ contract RewardTheAuthor is InitializableOwner {
     mapping(address => mapping(address => uint256)) private _userClaimedRewards; // user:token:amount
 
     EnumerableSet.AddressSet private _supportTokens;
+    uint256 _rewardId;
 
     constructor() public {}
 
@@ -99,7 +101,10 @@ contract RewardTheAuthor is InitializableOwner {
         uint256 pending = _userRewards[msg.sender][address(token)];
         _userRewards[msg.sender][address(token)] = pending.add(amount);
 
+        _rewardId++;
+
         emit Reward(
+            _rewardId,
             msg.sender,
             target,
             address(token),
