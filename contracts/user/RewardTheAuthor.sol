@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "../governance/InitializableOwner.sol";
+import "../interfaces/IERC20Metadata.sol";
 
 contract RewardTheAuthor is InitializableOwner {
     using SafeERC20 for IERC20;
@@ -18,6 +19,13 @@ contract RewardTheAuthor is InitializableOwner {
         address[] tokens; // The token corresponding to the following value
         uint256[] pendingAmounts; // Amount of reward to be claimed
         uint256[] claimedAmounts; // Amount of rewards claimed
+    }
+
+    struct TokenView {
+        address token;
+        string name;
+        string symbol;
+        uint decimals;
     }
 
     event Reward(
@@ -74,6 +82,25 @@ contract RewardTheAuthor is InitializableOwner {
         ls = new address[](len);
         for (uint256 i = 0; i < len; ++i) {
             ls[i] = _supportTokens.at(i);
+        }
+        return ls;
+    }
+
+    function getSupportTokenViews() public view returns (TokenView[] memory ls) {
+        uint256 len = _supportTokens.length();
+        if (len == 0) {
+            return ls;
+        }
+
+        ls = new TokenView[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            address token = _supportTokens.at(i);
+            ls[i] = TokenView({
+                token: token,
+                name: IERC20Metadata(token).name(),
+                symbol: IERC20Metadata(token).symbol(),
+                decimals: IERC20Metadata(token).decimals()
+            });
         }
         return ls;
     }
