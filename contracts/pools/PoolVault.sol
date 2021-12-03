@@ -8,7 +8,7 @@ contract PoolVault is Ownable {
 
     constructor() public {}
 
-    function approve(address token) public returns (uint256) {
+    function approve(address token) public onlyOwner returns (uint256) {
         IERC20(token).approve(msg.sender, uint256(-1));
     }
 }

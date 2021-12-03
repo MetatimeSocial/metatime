@@ -72,6 +72,7 @@ contract UserProfile is InitializableOwner, ERC721Holder {
         require(_nft_address.length != 0, "nft address is zero.");
 
         for(uint256 i = 0; i < _nft_address.length; i++){
+            require(_nft_address[i] != address(0), "address is zero");
             EnumerableSet.add(supportsNFT, _nft_address[i]);
         }
     }
@@ -95,6 +96,8 @@ contract UserProfile is InitializableOwner, ERC721Holder {
 
     function updateNicknameMinLength(uint256 newLength) public onlyOwner {
         require(newLength > 0, "bad number");
+        require(newLength < nicknameMaxLength, "bad number");
+        
         nicknameMinLength = newLength;
     }
 

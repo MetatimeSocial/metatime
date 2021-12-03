@@ -263,7 +263,9 @@ contract TimeShop is InitializableOwner, ReentrancyGuard {
             );
     }
 
-    function buyTimeToken(uint256 dsg_amount) public returns (uint256 ret) {
+    function buyTimeToken(uint256 dsg_amount) public {
+        require(dsg_amount > 0, "bad amount");
+
         DsgTimeTokenRate storage dttr = m_dsg_time_rate[now_round];
 
         uint256 remainingAmount = dttr.max_dsg_token.sub(dttr.total_dsg);
@@ -271,7 +273,6 @@ contract TimeShop is InitializableOwner, ReentrancyGuard {
         //  now round enough.
         if (remainingAmount >= dsg_amount) {
             _buyTimeTokenByRound(dsg_amount, now_round);
-            ret = remainingAmount;
 
             if (remainingAmount == dsg_amount && now_round < m_max_round - 1) {
                 now_round++;
@@ -279,15 +280,12 @@ contract TimeShop is InitializableOwner, ReentrancyGuard {
         } else {
             if (remainingAmount > 0) {
                 _buyTimeTokenByRound(remainingAmount, now_round);
-                ret = remainingAmount;
             }
             
             if (now_round < m_max_round - 1) {
                 now_round++;
             }
         }
-
-        return ret;
     }
 
     function _buyTimeTokenByRound(uint256 dsg_amount, uint256 round) nonReentrant
@@ -357,7 +355,7 @@ contract TimeShop is InitializableOwner, ReentrancyGuard {
         m_dsg_token.approve(address(m_time_pool), pool_slow_amount + pool_donate_amount);
         m_time_pool.donate(m_dsg_token, pool_donate_amount);
 
-        // addAdditionalRewards time pool.  6 months , abount blocks: (1 * 60 * 60 * 24 * 30 * 6) / 3 = 5184000
+        // addAdditionalRewards time pool.  6 months , butTimeTokenabount blocks: (1 * 60 * 60 * 24 * 30 * 6) / 3 = 5184000
         
         // consider token0 == dsg.
         uint256 t0areb = 0;
