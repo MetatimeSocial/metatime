@@ -9,8 +9,9 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "../governance/InitializableOwner.sol";
 import "../interfaces/IERC20Metadata.sol";
+import "../base/BasicMetaTransaction.sol";
 
-contract RewardTheAuthor is InitializableOwner {
+contract RewardTheAuthor is InitializableOwner, BasicMetaTransaction {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -123,17 +124,17 @@ contract RewardTheAuthor is InitializableOwner {
         require(_supportTokens.contains(address(token)), "Unsupported token");
 
         uint256 oldBal = token.balanceOf(address(this));
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        token.safeTransferFrom(msgSender(), address(this), amount);
         amount = token.balanceOf(address(this)).sub(oldBal);
 
-        uint256 pending = _userRewards[msg.sender][address(token)];
-        _userRewards[msg.sender][address(token)] = pending.add(amount);
+        uint256 pending = _userRewards[msgSender()][address(token)];
+        _userRewards[msgSender()][address(token)] = pending.add(amount);
 
         _rewardId++;
 
         emit Reward(
             _rewardId,
-            msg.sender,
+            msgSender(),
             target,
             address(token),
             postType,
@@ -144,15 +145,15 @@ contract RewardTheAuthor is InitializableOwner {
     }
 
     function claim(address token) public {
-        uint256 pending = _userRewards[msg.sender][token];
+        uint256 pending = _userRewards[msgSender()][token];
         if (pending == 0) return;
 
-        _userRewards[msg.sender][token] = 0;
-        _userClaimedRewards[msg.sender][address(token)] = _userClaimedRewards[msg.sender][address(token)].add(pending);
+        _userRewards[msgSender()][token] = 0;
+        _userClaimedRewards[msgSender()][address(token)] = _userClaimedRewards[msgSender()][address(token)].add(pending);
 
-        IERC20(token).safeTransfer(msg.sender, pending);
+        IERC20(token).safeTransfer(msgSender(), pending);
 
-        emit Claim(msg.sender, token, pending);
+        emit Claim(msgSender(), token, pending);
     }
 
     function claimAll() public {

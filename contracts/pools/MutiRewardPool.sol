@@ -9,9 +9,10 @@ import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../interfaces/IERC20Metadata.sol";
 import "./PoolVault.sol";
+import "../base/BasicMetaTransaction.sol";
 
 
-contract MutiRewardPool is Ownable, IERC20 {
+contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -322,14 +323,14 @@ contract MutiRewardPool is Ownable, IERC20 {
         require(_amount > 0, "bad amount");
 
         PoolInfo storage pool = poolInfo[pid];
-        UserInfo storage user = userInfo[msg.sender];
+        UserInfo storage user = userInfo[msgSender()];
 
         // require (_amount.add(user.amount) <= maxStaking, 'exceed max stake');
 
         updatePool(pid);
 
         uint256 oldBal = pool.lpToken.balanceOf(address(poolVault));
-        pool.lpToken.safeTransferFrom(address(msg.sender), address(poolVault), _amount);
+        pool.lpToken.safeTransferFrom(address(msgSender()), address(poolVault), _amount);
         _amount = pool.lpToken.balanceOf(address(poolVault)).sub(oldBal);
 
         lastStakingId++;
@@ -344,12 +345,12 @@ contract MutiRewardPool is Ownable, IERC20 {
         });
         user.stakingIds.add(lastStakingId);
 
-        emit Deposit(msg.sender, pid, lastStakingId, _amount);
-        emit Transfer(address(0), msg.sender, _amount);
+        emit Deposit(msgSender(), pid, lastStakingId, _amount);
+        emit Transfer(address(0), msgSender(), _amount);
     }
 
     function harvestAll() public {
-        UserInfo storage user = userInfo[msg.sender];
+        UserInfo storage user = userInfo[msgSender()];
 
         uint256 len = user.stakingIds.length();
 
@@ -359,7 +360,7 @@ contract MutiRewardPool is Ownable, IERC20 {
     }
 
     function harvestPool(uint256 pid) public {
-        UserInfo storage user = userInfo[msg.sender];
+        UserInfo storage user = userInfo[msgSender()];
 
         uint256 len = user.stakingIds.length();
 
@@ -374,7 +375,7 @@ contract MutiRewardPool is Ownable, IERC20 {
 
     function harvest(uint256 _stakingId) public {
         
-        UserInfo storage user = userInfo[msg.sender];
+        UserInfo storage user = userInfo[msgSender()];
         require(user.stakingIds.contains(_stakingId), "not the staking owner");
         StakingInfo storage staking = stakingInfo[_stakingId];
         PoolInfo storage pool = poolInfo[staking.pid];
@@ -413,19 +414,19 @@ contract MutiRewardPool is Ownable, IERC20 {
         staking.token1RewardDebt = staking.amount.mul(pool.token1AccRewardsPerShare).add(staking.amount.mul(pool.token1AccAdditionalRewardsPerShare)).div(1e12);
 
         if (reward0 > 0) {
-            rewardToken0.safeTransfer(address(msg.sender), reward0);
+            rewardToken0.safeTransfer(address(msgSender()), reward0);
         }
 
          if (reward1 > 0) {
-            rewardToken1.safeTransfer(address(msg.sender), reward1);
+            rewardToken1.safeTransfer(address(msgSender()), reward1);
         }
 
-        emit Harvest(msg.sender, staking.pid, _stakingId, reward0, reward1);
+        emit Harvest(msgSender(), staking.pid, _stakingId, reward0, reward1);
     }
 
     // Withdraw tokens from STAKING.
     function withdraw(uint256 _stakingId) public {
-        UserInfo storage user = userInfo[msg.sender];
+        UserInfo storage user = userInfo[msgSender()];
         require(user.stakingIds.contains(_stakingId), "not the staking owner");
         StakingInfo storage staking = stakingInfo[_stakingId];
         PoolInfo storage pool = poolInfo[staking.pid];
@@ -437,20 +438,20 @@ contract MutiRewardPool is Ownable, IERC20 {
         uint256 _amount = staking.amount;
         staking.amount = 0;
         pool.totalDeposit = pool.totalDeposit.sub(_amount);
-        pool.lpToken.safeTransferFrom(address(poolVault), address(msg.sender), _amount);
+        pool.lpToken.safeTransferFrom(address(poolVault), address(msgSender()), _amount);
         
         staking.token0RewardDebt = _amount.mul(pool.token0AccRewardsPerShare).add(_amount.mul(pool.token0AccAdditionalRewardsPerShare)).div(1e12);
         staking.token1RewardDebt = _amount.mul(pool.token1AccRewardsPerShare).add(_amount.mul(pool.token1AccAdditionalRewardsPerShare)).div(1e12);
 
         user.stakingIds.remove(_stakingId);
 
-        emit Withdraw(msg.sender, staking.pid, _stakingId, _amount);
-        emit Transfer(msg.sender, address(0), _amount);
+        emit Withdraw(msgSender(), staking.pid, _stakingId, _amount);
+        emit Transfer(msgSender(), address(0), _amount);
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
     function emergencyWithdraw(uint256 _stakingId) public {
-        UserInfo storage user = userInfo[msg.sender];
+        UserInfo storage user = userInfo[msgSender()];
         require(user.stakingIds.contains(_stakingId), "not the staking owner");
         StakingInfo storage staking = stakingInfo[_stakingId];
         PoolInfo storage pool = poolInfo[staking.pid];
@@ -469,22 +470,22 @@ contract MutiRewardPool is Ownable, IERC20 {
 
         user.stakingIds.remove(_stakingId);
 
-        pool.lpToken.safeTransferFrom(address(poolVault), address(msg.sender), amount);
+        pool.lpToken.safeTransferFrom(address(poolVault), address(msgSender()), amount);
 
-        emit EmergencyWithdraw(msg.sender,  staking.pid, _stakingId, amount);
-        emit Transfer(msg.sender, address(0), amount);
+        emit EmergencyWithdraw(msgSender(),  staking.pid, _stakingId, amount);
+        emit Transfer(msgSender(), address(0), amount);
     }
 
     // Withdraw reward. EMERGENCY ONLY.
     function emergencyRewardWithdrawToken0(uint256 _amount) public onlyOwner {
         require(_amount <= rewardToken0.balanceOf(address(this)), 'not enough token');
-        rewardToken0.safeTransfer(address(msg.sender), _amount);
+        rewardToken0.safeTransfer(address(msgSender()), _amount);
     }
 
     // Withdraw reward. EMERGENCY ONLY.
     function emergencyRewardWithdrawToken1(uint256 _amount) public onlyOwner {
         require(_amount <= rewardToken1.balanceOf(address(this)), 'not enough token');
-        rewardToken1.safeTransfer(address(msg.sender), _amount);
+        rewardToken1.safeTransfer(address(msgSender()), _amount);
     }
 
     function totalStaking(address account) public view returns(uint256 amount) {
@@ -500,7 +501,7 @@ contract MutiRewardPool is Ownable, IERC20 {
         require(token == rewardToken0 || token == rewardToken1, "not support token");
 
         uint256 oldBal = IERC20(token).balanceOf(address(this));
-        IERC20(token).safeTransferFrom(msg.sender, address(this), donateAmount);
+        IERC20(token).safeTransferFrom(msgSender(), address(this), donateAmount);
         uint256 realAmount = IERC20(token).balanceOf(address(this)) - oldBal;
 
         bool isToken0 = token == rewardToken0 ? true : false;
@@ -525,7 +526,7 @@ contract MutiRewardPool is Ownable, IERC20 {
                 pool.token1AccRewardsPerShare = pool.token1AccRewardsPerShare.add(tokenReward.div(pool.totalDeposit));
                 pool.token1AccDonateAmount = pool.token1AccDonateAmount.add(tokenReward);
             }
-            emit Donate(msg.sender, pid, address(token), tokenReward.div(1e12), tokenReward.div(1e12));
+            emit Donate(msgSender(), pid, address(token), tokenReward.div(1e12), tokenReward.div(1e12));
         }
     }
 
@@ -535,7 +536,7 @@ contract MutiRewardPool is Ownable, IERC20 {
         massUpdatePools();
 
         uint256 oldBal = IERC20(token).balanceOf(address(this));
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(token).safeTransferFrom(msgSender(), address(this), amount);
         uint256 realAmount = IERC20(token).balanceOf(address(this)).sub(oldBal);
 
         if (token == rewardToken0) {
@@ -742,7 +743,7 @@ contract MutiRewardPool is Ownable, IERC20 {
     /******************************   Caller   ******************************/
 
     modifier onlyCaller() {
-        require(isCaller(msg.sender), "Treasury: not the caller");
+        require(isCaller(msgSender()), "Treasury: not the caller");
         _;
     }
 
