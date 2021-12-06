@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "../governance/InitializableOwner.sol";
 import "../interfaces/IERC20Metadata.sol";
 import "../base/BasicMetaTransaction.sol";
+import "../interfaces/IWETH.sol";
 
 contract RewardTheAuthor is InitializableOwner, BasicMetaTransaction {
     using SafeERC20 for IERC20;
@@ -41,6 +42,8 @@ contract RewardTheAuthor is InitializableOwner, BasicMetaTransaction {
     );
     event Claim(address indexed user, address token, uint256 amount);
 
+    IWETH public _weth;
+
     mapping(address => mapping(address => uint256)) private _userRewards; // user:token:amount
     mapping(address => mapping(address => uint256)) private _userClaimedRewards; // user:token:amount
 
@@ -49,8 +52,10 @@ contract RewardTheAuthor is InitializableOwner, BasicMetaTransaction {
 
     constructor() public {}
 
-    function initialize(address[] memory supportTokens) public {
+    function initialize(IWETH weth, address[] memory supportTokens) public {
         super._initialize();
+        
+        _weth = weth;
 
         for (uint256 i = 0; i < supportTokens.length; ++i) {
             _supportTokens.add(supportTokens[i]);
@@ -120,12 +125,21 @@ contract RewardTheAuthor is InitializableOwner, BasicMetaTransaction {
         uint256 postType,
         uint64 postId,
         uint256 amount
-    ) public {
+    ) public payable {
         require(_supportTokens.contains(address(token)), "Unsupported token");
 
-        uint256 oldBal = token.balanceOf(address(this));
-        token.safeTransferFrom(msgSender(), address(this), amount);
-        amount = token.balanceOf(address(this)).sub(oldBal);
+        if (msg.value > 0) {
+            require(address(token) == address(_weth), "bad params");
+
+            _weth.deposit{value: msg.value}();
+            amount = msg.value;
+        } else {
+            uint256 oldBal = token.balanceOf(address(this));
+            token.safeTransferFrom(msgSender(), address(this), amount);
+            amount = token.balanceOf(address(this)).sub(oldBal);
+        }
+
+        require(amount > 0, "bad amount");
 
         uint256 pending = _userRewards[msgSender()][address(token)];
         _userRewards[msgSender()][address(token)] = pending.add(amount);
