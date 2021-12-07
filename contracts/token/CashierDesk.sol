@@ -27,6 +27,20 @@ contract CashierDesk is InitializableOwner {
         uint256 timestamp
     );
 
+    event SubToken(
+        address indexed sender,
+        address indexed token,
+        uint256 value,
+        uint256 timestamp
+    );
+
+    event AddToken(
+        address indexed sender,
+        address indexed token,
+        uint256 value,
+        uint256 timestamp
+    );
+
     event UserCostToken(
         address indexed sender,
         address indexed token,
@@ -120,6 +134,44 @@ contract CashierDesk is InitializableOwner {
 
             emit WithdrawToken(users[i], token, values[i], block.timestamp);
         }
+        return true;
+    }
+
+    function SubUsersBalance(
+        address token,
+        address[] memory users,
+        uint256[] memory values
+    ) public onlyCaller returns (bool) {
+        require(_support_token.contains(token) == true, "cant support token.");
+        require(users.length == values.length, "bad length");
+
+        for (uint256 i = 0; i < users.length; i++) {
+            require(
+                _balanceOf[users[i]][token] >= values[i],
+                "enougth amount."
+            );
+
+            _balanceOf[users[i]][token] -= values[i];
+
+            emit SubToken(users[i], token, values[i], block.timestamp);
+        }
+
+        return true;
+    }
+
+    function AddUsersBalance(
+        address token,
+        address[] memory users,
+        uint256[] memory values
+    ) public onlyCaller returns (bool) {
+        require(_support_token.contains(token) == true, "cant support token.");
+        require(users.length == values.length, "bad length");
+
+        for (uint256 i = 0; i < users.length; i++) {
+            _balanceOf[users[i]][token] += values[i];
+            emit AddToken(users[i], token, values[i], block.timestamp);
+        }
+
         return true;
     }
 
