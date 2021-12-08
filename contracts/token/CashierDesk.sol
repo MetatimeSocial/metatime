@@ -30,21 +30,7 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
         uint256 timestamp
     );
 
-    event SubToken(
-        address indexed sender,
-        address indexed token,
-        uint256 value,
-        uint256 timestamp
-    );
-
-    event AddToken(
-        address indexed sender,
-        address indexed token,
-        uint256 value,
-        uint256 timestamp
-    );
-
-    event UserCostToken(
+    event WithdrawToAddress(
         address indexed sender,
         address indexed token,
         uint256 value,
@@ -59,8 +45,8 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
     using EnumerableSet for EnumerableSet.AddressSet;
     EnumerableSet.AddressSet private _support_token;
 
-    // user => token => amount;
-    mapping(address => mapping(address => uint256)) public _balanceOf;
+    uint256 public total_charge;
+    uint256 public total_burn;
 
     constructor() public {
         initialize();
@@ -112,8 +98,7 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
         erc20.safeTransferFrom(msgSender(), address(this), amount);
         amount = erc20.balanceOf(address(this)).sub(oldBal);
 
-        _balanceOf[msgSender()][token] += amount;
-
+        total_charge += amount;
         emit ChargeToken(msgSender(), token, amount, block.timestamp);
 
         return true;
@@ -130,81 +115,35 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
         IERC20 erc20 = IERC20(token);
 
         for (uint256 i = 0; i < users.length; i++) {
-            require(
-                _balanceOf[users[i]][token] >= values[i],
-                "enougth amount."
-            );
 
-            _balanceOf[users[i]][token] -= values[i];
             erc20.safeTransfer(users[i], values[i]);
 
             emit WithdrawToken(users[i], token, values[i], block.timestamp);
         }
         return true;
     }
-
-    function SubUsersBalance(
-        address token,
-        address[] memory users,
-        uint256[] memory values
-    ) public onlyCaller returns (bool) {
-        require(_support_token.contains(token) == true, "cant support token.");
-        require(users.length == values.length, "bad length");
-
-        for (uint256 i = 0; i < users.length; i++) {
-            require(
-                _balanceOf[users[i]][token] >= values[i],
-                "enougth amount."
-            );
-
-            _balanceOf[users[i]][token] -= values[i];
-
-            emit SubToken(users[i], token, values[i], block.timestamp);
-        }
-
-        return true;
-    }
-
-    function AddUsersBalance(
-        address token,
-        address[] memory users,
-        uint256[] memory values
-    ) public onlyCaller returns (bool) {
-        require(_support_token.contains(token) == true, "cant support token.");
-        require(users.length == values.length, "bad length");
-
-        for (uint256 i = 0; i < users.length; i++) {
-            _balanceOf[users[i]][token] += values[i];
-            emit AddToken(users[i], token, values[i], block.timestamp);
-        }
-
-        return true;
-    }
-
+   
     function burnToken(
         address token,
-        address[] memory users,
-        uint256[] memory values
+        uint256 total
     ) public onlyCaller returns (bool) {
         require(_support_token.contains(token) == true, "cant support token.");
-        require(users.length == values.length, "bad length");
 
         IBurnableERC20 erc20 = IBurnableERC20(token);
-
-        uint256 total_burn = 0;
-        for (uint256 i = 0; i < users.length; i++) {
-            require(
-                _balanceOf[users[i]][token] >= values[i],
-                "enougth amount."
-            );
-
-            _balanceOf[users[i]][token] -= values[i];
-            total_burn += values[i];
-
-            emit UserCostToken(users[i], token, values[i], block.timestamp);
-        }
-
+        
+        total_burn += total;
         erc20.burn(total_burn);
         return true;
     }
+
+    function withdrawToAddress(address token, uint256 balance) public onlyOwner returns(bool){
+        require(_support_token.contains(token) == true, "cant support token.");
+         
+        IERC20 erc20 = IERC20(token);
+        erc20.safeTransfer(token, balance);
+
+        emit WithdrawToAddress(msgSender(), token, balance, block.timestamp);
+        return true;
+    }
+
 }
