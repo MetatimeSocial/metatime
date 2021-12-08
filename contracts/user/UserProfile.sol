@@ -105,7 +105,7 @@ contract UserProfile is InitializableOwner, ERC721Holder {
         }
         
         for (uint i = 0; i < bt.length; ++i) {
-            if(bt[i] == '#' || bt[i] == '%' || bt[i] == '@') {
+            if(bt[i] == '#' || bt[i] == '%' || bt[i] == '@' || bt[i] == '$') {
                 return false;
             }
         }
