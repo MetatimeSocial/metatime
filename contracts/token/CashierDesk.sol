@@ -6,12 +6,15 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../governance/InitializableOwner.sol";
 import "../interfaces/IBurnableERC20.sol";
+import "../base/BasicMetaTransaction.sol";
 
-contract CashierDesk is InitializableOwner {
+contract CashierDesk is InitializableOwner, BasicMetaTransaction {
     using SafeERC20 for IERC20;
+    using SafeMath for uint256;
 
     event ChargeToken(
         address indexed sender,
@@ -68,11 +71,12 @@ contract CashierDesk is InitializableOwner {
     }
 
     modifier onlyCaller() {
-        require(_admin.contains(msg.sender) == true, "only caller.");
+        require(_admin.contains(msgSender()) == true, "only caller.");
         _;
     }
 
     function addSupportToken(address token) public onlyOwner returns (bool) {
+        require(token != address(0), "address is zero");
         require(_support_token.contains(token) == false, "ready support.");
         _support_token.add(token);
 
@@ -104,11 +108,13 @@ contract CashierDesk is InitializableOwner {
 
         IERC20 erc20 = IERC20(token);
 
-        erc20.safeTransferFrom(msg.sender, address(this), amount);
+        uint256 oldBal = erc20.balanceOf(address(this));
+        erc20.safeTransferFrom(msgSender(), address(this), amount);
+        amount = erc20.balanceOf(address(this)).sub(oldBal);
 
-        _balanceOf[msg.sender][token] += amount;
+        _balanceOf[msgSender()][token] += amount;
 
-        emit ChargeToken(msg.sender, token, amount, block.timestamp);
+        emit ChargeToken(msgSender(), token, amount, block.timestamp);
 
         return true;
     }
