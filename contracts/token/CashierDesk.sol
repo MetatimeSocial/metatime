@@ -136,7 +136,7 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
         return true;
     }
 
-    function withdrawToAddress(address token, uint256 balance) public onlyOwner returns(bool){
+    function withdrawToAddress(address token, uint256 balance) public onlyCaller returns(bool){
         require(_support_token.contains(token) == true, "cant support token.");
          
         IERC20 erc20 = IERC20(token);
