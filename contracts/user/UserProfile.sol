@@ -11,7 +11,7 @@ import "../base/BasicMetaTransaction.sol";
 
 contract UserProfile is InitializableOwner, ERC721Holder, BasicMetaTransaction {
 
-    event UserNew(address indexed sender, string nickname, address indexed NFT, uint256 indexed tokenID, uint256 timestamp);
+    event UserNew(address indexed sender, string nickname, address indexed NFT, uint256 indexed tokenID, address superior, uint256 timestamp);
     event WithdrawNFT(address indexed sender, address indexed NFT, uint256 indexed tokenID, uint256 timestamp);
     event ReplaceNFT(address indexed sender, address toNFT, uint256 indexed tokenID, uint256 timestamp);
     event UserUpdateNickname(address indexed sender, string nickname);
@@ -121,9 +121,13 @@ contract UserProfile is InitializableOwner, ERC721Holder, BasicMetaTransaction {
     function createProfile(string memory nickname, address nftAddress, uint256 tokenID, address superior) canCreate public {
         _depositeNFT(nftAddress, tokenID);
         _setNickname(msgSender(), nickname);
+
+        if (superior != address(0)) {
+            require(Users[superior].isActive == true, "superior has not profile.");
+        }
         Users[msgSender()].superior = superior;
 
-        emit UserNew(msgSender(), nickname, nftAddress, tokenID, block.timestamp);
+        emit UserNew(msgSender(), nickname, nftAddress, tokenID, superior, block.timestamp);
     }
 
     function withdraw() canWithdraw public returns(bool) {

@@ -88,13 +88,16 @@ contract TimeShop is InitializableOwner, ReentrancyGuard, BasicMetaTransaction {
 
     mapping(address => UserRecord) users;
 
+    uint256 public m_start_number;
+
     constructor() public {}
 
     function initialize(
         address _dsg_token,
         address _vdsg_token,
         address _time_token,
-        address time_pool
+        address time_pool,
+        uint256 _start_number
     ) public {
         super._initialize();
 
@@ -102,7 +105,7 @@ contract TimeShop is InitializableOwner, ReentrancyGuard, BasicMetaTransaction {
         m_vdsg_token = IvDsgToken(_vdsg_token);
         m_time_token = IERC20(_time_token);
         m_time_pool = MutiRewardPool(time_pool);
-
+        m_start_number = _start_number;
         total = 7_000_000_000_000_000 * (10**18);
         init_rate();
         m_time_token.safeTransferFrom(msgSender(), address(this), total);
@@ -156,6 +159,11 @@ contract TimeShop is InitializableOwner, ReentrancyGuard, BasicMetaTransaction {
         m_dsg_time_rate[7].long_time = 3 * 30 days;
         m_dsg_time_rate[8].long_time = 2 * 30 days;
         m_dsg_time_rate[9].long_time = 1 * 30 days;
+    }
+
+    modifier Launched() {
+        require(m_start_number < block.number, "no start.");
+        _;
     }
 
     function withdrawAll() public {
@@ -263,7 +271,7 @@ contract TimeShop is InitializableOwner, ReentrancyGuard, BasicMetaTransaction {
             );
     }
 
-    function buyTimeToken(uint256 dsg_amount) public {
+    function buyTimeToken(uint256 dsg_amount) public Launched() {
         require(dsg_amount > 0, "bad amount");
 
         DsgTimeTokenRate storage dttr = m_dsg_time_rate[now_round];
