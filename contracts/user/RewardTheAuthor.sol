@@ -50,12 +50,18 @@ contract RewardTheAuthor is InitializableOwner, BasicMetaTransaction {
     EnumerableSet.AddressSet private _supportTokens;
     uint256 _rewardId;
 
+    uint256 public feeRate;
+    address public feeTreasury;
+
     constructor() public {}
 
-    function initialize(IWETH weth, address[] memory supportTokens) public {
+    function initialize(IWETH weth, address[] memory supportTokens, address feeTreasury_) public {
+        require(feeTreasury_ != address(0), "feeTreasury can not 0");
         super._initialize();
         
         _weth = weth;
+        feeRate = 1000; // 10%
+        feeTreasury = feeTreasury_;
 
         for (uint256 i = 0; i < supportTokens.length; ++i) {
             _supportTokens.add(supportTokens[i]);
@@ -73,6 +79,18 @@ contract RewardTheAuthor is InitializableOwner, BasicMetaTransaction {
         require(_supportTokens.contains(token), "not added");
 
         _supportTokens.remove(token);
+    }
+
+    function updateFeeRate(uint256 val) public onlyOwner {
+        require(val >= 0 && val < 10000, "bad num");
+
+        feeRate = val;
+    }
+
+    function updateFeeTreasury(address val) public onlyOwner {
+        require(val != address(0), "address is zero");
+
+        feeTreasury = val;
     }
 
     function isSupportToken(address token) public view returns (bool) {
@@ -137,6 +155,12 @@ contract RewardTheAuthor is InitializableOwner, BasicMetaTransaction {
             uint256 oldBal = token.balanceOf(address(this));
             token.safeTransferFrom(msgSender(), address(this), amount);
             amount = token.balanceOf(address(this)).sub(oldBal);
+        }
+
+        if (feeRate > 0) {
+            uint256 fee = amount.mul(feeRate).div(10000);
+            token.safeTransfer(feeTreasury, fee);
+            amount = amount.sub(fee);
         }
 
         require(amount > 0, "bad amount");
