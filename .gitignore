@@ -9,3 +9,5 @@ migrations
 build
 .DS_Store
 test
+.deps
+yarn.lock
