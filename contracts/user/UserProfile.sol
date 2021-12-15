@@ -134,7 +134,7 @@ contract UserProfile is InitializableOwner, ERC721Holder, BasicMetaTransaction {
         _withdraw();
         _depositeNFT(toNFT, tokenID);
 
-        ReplaceNFT(msgSender(), toNFT, tokenID, block.timestamp);
+        emit ReplaceNFT(msgSender(), toNFT, tokenID, block.timestamp);
         
         return true;
     }
@@ -213,12 +213,8 @@ contract UserProfile is InitializableOwner, ERC721Holder, BasicMetaTransaction {
         IERC721 nftToken = IERC721(u.NFT_address);
         nftToken.safeTransferFrom(address(this),msgSender(), tokenID);
 
-
-        u.user_id = address(0);
-        u.NFT_address = address(0);
-        u.token_id =0;
-
         delete nicknames[u.nickname];
+        delete Users[msgSender()];
 
         emit WithdrawNFT(msgSender(), address(nftToken), tokenID, block.timestamp);
 

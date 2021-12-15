@@ -159,6 +159,8 @@ contract RewardTheAuthor is InitializableOwner, BasicMetaTransaction {
     }
 
     function claim(address token) public {
+        require(_supportTokens.contains(address(token)), "Unsupported token");
+        
         uint256 pending = _userRewards[msgSender()][token];
         if (pending == 0) return;
 
