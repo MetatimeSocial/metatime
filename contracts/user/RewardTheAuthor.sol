@@ -141,8 +141,8 @@ contract RewardTheAuthor is InitializableOwner, BasicMetaTransaction {
 
         require(amount > 0, "bad amount");
 
-        uint256 pending = _userRewards[msgSender()][address(token)];
-        _userRewards[msgSender()][address(token)] = pending.add(amount);
+        uint256 pending = _userRewards[target][address(token)];
+        _userRewards[target][address(token)] = pending.add(amount);
 
         _rewardId++;
 
