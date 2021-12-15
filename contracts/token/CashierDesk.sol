@@ -45,8 +45,8 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
     using EnumerableSet for EnumerableSet.AddressSet;
     EnumerableSet.AddressSet private _support_token;
 
-    uint256 public total_charge;
-    uint256 public total_burn;
+    mapping(address => uint256) public total_charge;
+    mapping(address => uint256) public total_burn;
 
     constructor() public {
         initialize();
@@ -98,7 +98,7 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
         erc20.safeTransferFrom(msgSender(), address(this), amount);
         amount = erc20.balanceOf(address(this)).sub(oldBal);
 
-        total_charge += amount;
+        total_charge[token] += amount;
         emit ChargeToken(msgSender(), token, amount, block.timestamp);
 
         return true;
@@ -131,8 +131,8 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
 
         IBurnableERC20 erc20 = IBurnableERC20(token);
         
-        total_burn += total;
-        erc20.burn(total_burn);
+        total_burn[token] += total;
+        erc20.burn(total);
         return true;
     }
 

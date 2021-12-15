@@ -44,7 +44,7 @@ contract Meta is ERC20, Ownable {
     }
 
     function getMinter(uint256 _index) public view returns (address) {
-        require(_index <= getMinterLength() - 1, "Token: index out of bounds");
+        require(getMinterLength() > 0 && _index <= getMinterLength() - 1, "Token: index out of bounds");
         return EnumerableSet.at(_minters, _index);
     }
 

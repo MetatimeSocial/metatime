@@ -180,6 +180,7 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
         uint256 _allocPoint
     ) public onlyOwner {
         massUpdatePools();
+        checkPoolDuplicate(_stakingDuration);
 
         // staking pool
         poolInfo.push(PoolInfo({
@@ -197,6 +198,13 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
         }));
 
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
+    }
+
+    function checkPoolDuplicate(uint256 _stakingDuration) view internal {
+        uint256 len = poolInfo.length;
+        for (uint256 i = 0; i < len; ++i) {
+            require(poolInfo[i].duration != _stakingDuration, "add: duration is already added to the pool");
+        }
     }
 
     // View function to see token0 pending Reward on frontend.
