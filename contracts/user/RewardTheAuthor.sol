@@ -165,8 +165,10 @@ contract RewardTheAuthor is InitializableOwner, BasicMetaTransaction {
 
         require(amount > 0, "bad amount");
 
-        uint256 pending = _userRewards[target][address(token)];
-        _userRewards[target][address(token)] = pending.add(amount);
+        // uint256 pending = _userRewards[target][address(token)];
+        // _userRewards[target][address(token)] = pending.add(amount);
+        IERC20(token).safeTransfer(target, amount);
+        _userClaimedRewards[target][address(token)] = _userClaimedRewards[target][address(token)].add(amount);
 
         _rewardId++;
 
