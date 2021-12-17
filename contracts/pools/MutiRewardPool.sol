@@ -354,7 +354,7 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
         user.stakingIds.add(lastStakingId);
 
         emit Deposit(msgSender(), pid, lastStakingId, _amount);
-        emit Transfer(address(0), msgSender(), _amount);
+        emit Transfer(address(0), msgSender(), _amount.mul(pool.allocPoint));
     }
 
     function harvestAll() public {
@@ -454,7 +454,7 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
         user.stakingIds.remove(_stakingId);
 
         emit Withdraw(msgSender(), staking.pid, _stakingId, _amount);
-        emit Transfer(msgSender(), address(0), _amount);
+        emit Transfer(msgSender(), address(0), _amount.mul(pool.allocPoint));
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
@@ -481,7 +481,7 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
         pool.lpToken.safeTransferFrom(address(poolVault), address(msgSender()), amount);
 
         emit EmergencyWithdraw(msgSender(),  staking.pid, _stakingId, amount);
-        emit Transfer(msgSender(), address(0), amount);
+        emit Transfer(msgSender(), address(0), amount.mul(pool.allocPoint));
     }
 
     // Withdraw reward. EMERGENCY ONLY.
