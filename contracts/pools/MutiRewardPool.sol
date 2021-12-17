@@ -698,11 +698,11 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
     /******************************   ERC20   ******************************/
 
     function name() public view virtual returns (string memory) {
-        return string( abi.encodePacked( "Staked ", IERC20Metadata(address(depositToken)).symbol() ));
+        return string( abi.encodePacked( "Staking ", IERC20Metadata(address(depositToken)).symbol() ));
     }
 
     function symbol() public view virtual returns (string memory) {
-        return string( abi.encodePacked( "ve", IERC20Metadata(address(depositToken)).symbol() ));
+        return string( abi.encodePacked( "s", IERC20Metadata(address(depositToken)).symbol() ));
     }
 
     function decimals() public view virtual returns (uint8) {
