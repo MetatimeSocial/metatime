@@ -84,7 +84,9 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
 
     // codeHash: keccak256(code)
     function genCodes(uint256 nftId, bytes32[] memory codeHashs) public {
-        require(nft.ownerOf(nftId) == msgSender(), "not the nft owner");
+        (,, uint256 uTokenId, ,) = userProfile.getUserView(msgSender());
+        require(nft.ownerOf(nftId) == msgSender() || (uTokenId >= 0 && nftId == uTokenId), "not the nft owner");
+        
         uint count = nftGenCodeCount[nftId];
         require(count + codeHashs.length <= maxGendCodeCount, "exceeds the maximum number that can be generated");
 

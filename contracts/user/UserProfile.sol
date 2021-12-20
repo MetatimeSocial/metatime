@@ -233,4 +233,12 @@ contract UserProfile is InitializableOwner, ERC721Holder, BasicMetaTransaction {
         return true;
     }
 
+    function getUserView(address user) public view returns(string memory nickname, address nftAddress, uint256 tokenId, bool isAcctive, address superior) {
+        User storage u = Users[user];
+        nickname = u.nickname;
+        nftAddress = u.NFT_address;
+        tokenId = u.token_id;
+        isAcctive = u.isActive;
+        superior = u.superior;
+    }
 }
