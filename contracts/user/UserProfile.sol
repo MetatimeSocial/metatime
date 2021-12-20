@@ -118,25 +118,33 @@ contract UserProfile is InitializableOwner, ERC721Holder, BasicMetaTransaction {
         return true;
     }
 
-    function createProfile(string memory nickname, address nftAddress, uint256 tokenID, address superior) canCreate public {
-        _depositeNFT(nftAddress, tokenID);
-        _setNickname(msgSender(), nickname);
+    function createProfile(string memory nickname, address nftAddress, uint256 tokenID, address superior) public {
+        _createProfileToUser(msgSender(), nickname, nftAddress, tokenID, superior);
+    }
+
+    function createProfileToUser(address to, string memory nickname, address nftAddress, uint256 tokenID, address superior) public {
+        _createProfileToUser(to, nickname, nftAddress, tokenID, superior);
+    }
+
+    function _createProfileToUser(address to, string memory nickname, address nftAddress, uint256 tokenID, address superior) canCreate internal {
+        _depositeNFT(msgSender(), to, nftAddress, tokenID);
+        _setNickname(to, nickname);
 
         if (superior != address(0)) {
             require(Users[superior].isActive == true, "superior has not profile.");
         }
-        Users[msgSender()].superior = superior;
+        Users[to].superior = superior;
 
-        emit UserNew(msgSender(), nickname, nftAddress, tokenID, superior, block.timestamp);
+        emit UserNew(to, nickname, nftAddress, tokenID, superior, block.timestamp);
     }
 
     function withdraw() canWithdraw public returns(bool) {
-        return _withdraw();
+        return _withdraw(msgSender());
     }
 
     function replaceNFT(address toNFT, uint256 tokenID) canReplace public returns(bool) {
-        _withdraw();
-        _depositeNFT(toNFT, tokenID);
+        _withdraw(msgSender());
+        _depositeNFT(msgSender(), msgSender(), toNFT, tokenID);
 
         emit ReplaceNFT(msgSender(), toNFT, tokenID, block.timestamp);
         
@@ -150,7 +158,7 @@ contract UserProfile is InitializableOwner, ERC721Holder, BasicMetaTransaction {
         emit UserUpdateNickname(msgSender(), nickname);
     }
 
-    function getSupportNFT() public view returns(address[] memory sup){
+    function getSupportNFT() public view returns(address[] memory sup) {
         sup = new address[](supportsNFT.length());
         for(uint256 i = 0; i < supportsNFT.length(); i++){
             sup[i] = supportsNFT.at(i);
@@ -185,42 +193,42 @@ contract UserProfile is InitializableOwner, ERC721Holder, BasicMetaTransaction {
     /*
     deposite  nft
      */
-    function _depositeNFT(address nftAddress, uint256 tokenID) internal {
+    function _depositeNFT(address from, address user, address nftAddress, uint256 tokenID) internal {
     
         // check support
         require(supportsNFT.contains(nftAddress) == true, "support nft address.");
         
-        User storage u = Users[msgSender()];
+        User storage u = Users[user];
 
         // check  deposited.
         require(u.user_id == address(0), "address has deposite nft.");
         
         // Loads the interface to deposit the NFT contract
         IERC721 nftToken = IERC721(nftAddress);
-        require(msgSender() == nftToken.ownerOf(tokenID), "Only NFT owner can register");
-        nftToken.safeTransferFrom(msgSender(), address(this), tokenID);
+        require(from == nftToken.ownerOf(tokenID), "Only NFT owner can register");
+        nftToken.safeTransferFrom(from, address(this), tokenID);
 
-        u.user_id = msgSender();
+        u.user_id = user;
         u.NFT_address = address(nftToken);
         u.token_id = tokenID;
         u.isActive = true;
     }
 
-    function _withdraw() internal returns(bool) {
+    function _withdraw(address user) internal returns(bool) {
 
-        User storage u = Users[msgSender()];
+        User storage u = Users[user];
         require(u.isActive, "not active");
         require(u.user_id != address(0), "has not deposite.");
-        require(u.user_id == msgSender(), "not nft owner");
+        require(u.user_id == user, "not nft owner");
 
         uint256 tokenID = u.token_id;
         IERC721 nftToken = IERC721(u.NFT_address);
-        nftToken.safeTransferFrom(address(this),msgSender(), tokenID);
+        nftToken.safeTransferFrom(address(this), user, tokenID);
 
         delete nicknames[u.nickname];
-        delete Users[msgSender()];
+        delete Users[user];
 
-        emit WithdrawNFT(msgSender(), address(nftToken), tokenID, block.timestamp);
+        emit WithdrawNFT(user, address(nftToken), tokenID, block.timestamp);
 
         return true;
     }
