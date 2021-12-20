@@ -35,7 +35,7 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
     mapping(bytes32 => CodeLock) public codeLock;
 
     uint256 public codeLockDuration;
-    uint256 public maxGendCodeCount;
+    uint256 public maxGenCodeCount;
 
 
     event Exchange(address indexed sender, string indexed code, uint256 indexed createdID, uint256 existedID, uint256 color);
@@ -79,16 +79,16 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
         _toToken = IDsgNft(_to_token);
         userProfile = IUserProfile(userProfile_);
         codeLockDuration = 10 minutes;
-        maxGendCodeCount = 3;
+        maxGenCodeCount = 3;
     }
 
     // codeHash: keccak256(code)
     function genCodes(uint256 nftId, bytes32[] memory codeHashs) public {
         (,, uint256 uTokenId, ,) = userProfile.getUserView(msgSender());
         require(nft.ownerOf(nftId) == msgSender() || (uTokenId >= 0 && nftId == uTokenId), "not the nft owner");
-        
+
         uint count = nftGenCodeCount[nftId];
-        require(count + codeHashs.length <= maxGendCodeCount, "exceeds the maximum number that can be generated");
+        require(count + codeHashs.length <= maxGenCodeCount, "exceeds the maximum number that can be generated");
 
         for(uint i = 0; i < codeHashs.length; ++i) {
             CodeInfo storage info = codeInfo[codeHashs[i]];
@@ -250,11 +250,11 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
         return string(bstr);
     }
 
-    function getView() public view returns(address nft_, address userProfile_, uint256 codeLockDuration_, uint256 maxGendCodeCount_, address toToken_) {
+    function getView() public view returns(address nft_, address userProfile_, uint256 codeLockDuration_, uint256 maxGenCodeCount_, address toToken_) {
         nft_ = address(nft);
         userProfile_ = address(userProfile);
         codeLockDuration_ = codeLockDuration;
-        maxGendCodeCount_ = maxGendCodeCount;
+        maxGenCodeCount_ = maxGenCodeCount;
         toToken_ = address(_toToken);
     }
 
