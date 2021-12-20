@@ -62,7 +62,6 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
 
     // 
     uint8 public now_length = 0;
-    uint256 public m_price = 0;
 
     // DsgNft _toToken nft,
     mapping(uint256 => address) public  _nft_address;
@@ -247,6 +246,24 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
         }
         
         return string(bstr);
+    }
+
+    function getView() public view returns(address nft_, address userProfile_, uint256 codeLockDuration_, uint256 maxGendCodeCount_, address toToken_) {
+        nft_ = address(nft);
+        userProfile_ = address(userProfile);
+        codeLockDuration_ = codeLockDuration;
+        maxGendCodeCount_ = maxGendCodeCount;
+        toToken_ = address(_toToken);
+    }
+
+    function getCodeView(bytes32 codeHash) public view returns(address lockUser, uint256 lockedAt, address generator, uint8 state) {
+        CodeLock storage cl = codeLock[codeHash];
+        CodeInfo storage ci = codeInfo[codeHash];
+
+        lockUser = cl.user;
+        lockedAt = cl.lockedAt;
+        generator = ci.generator;
+        state = ci.state;
     }
 
     // implementation  received.
