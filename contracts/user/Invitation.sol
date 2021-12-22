@@ -37,6 +37,8 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
     uint256 public codeLockDuration;
     uint256 public maxGendCodeCount;
 
+    event GenCode(address indexed sender, uint256 indexed nft_id, uint256 timestamp, bytes32 code);
+    event LockEvent(address indexed serder, uint256 timestamp, bytes32 halfHash);
 
     event Exchange(address indexed sender, string indexed code, uint256 indexed createdID, uint256 existedID, uint256 color);
 
@@ -94,9 +96,12 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
 
             info.state = CODE_STATE_UNUSED;
             info.generator = msgSender();
+
+            emit GenCode(msgSender(), nftId, block.timestamp, codeHashs[i]);
         }
 
         nftGenCodeCount[nftId] = count + codeHashs.length;
+      
     }
 
     function lockCode(bytes32 halfHash) public {
@@ -105,6 +110,8 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
 
         cl.user = msgSender();
         cl.lockedAt = block.timestamp;
+
+        emit LockEvent(msgSender(), block.timestamp, halfHash);
     }
 
     function exchange(string memory nickname, string calldata code, uint256 created, uint256 bg_color) public returns(uint256 createTokenID) {
