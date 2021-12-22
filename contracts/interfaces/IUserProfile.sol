@@ -12,4 +12,5 @@ interface IUserProfile {
     function getSupportNFT() external view returns(address[] memory sup);
     function pauseUser(address user) external;
     function reactivateUser(address user) external;
+    function getUserView(address user) external view returns(string memory nickname, address nftAddress, uint256 tokenId, bool isAcctive, address superior);
 }
