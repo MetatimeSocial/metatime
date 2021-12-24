@@ -294,10 +294,6 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
                 uint256 additionalTokenReward = additionalMultiplier.mul(token0AdditionalRewardPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
                 pool.token0AccAdditionalRewardsPerShare = pool.token0AccAdditionalRewardsPerShare.add(additionalTokenReward.mul(1e12).div(lpSupply));
             }
-
-            if (block.number >= token0AdditionalRewardEndBlock) {
-                token0AdditionalRewardPerBlock = 0;
-            }
         }
         
         uint256 token1Reward = multiplier.mul(token1RewardPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
@@ -308,10 +304,6 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
                 uint256 additionalMultiplier = getMultiplier(pool.lastRewardBlock, endBlock);
                 uint256 additionalTokenReward = additionalMultiplier.mul(token1AdditionalRewardPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
                 pool.token1AccAdditionalRewardsPerShare = pool.token1AccAdditionalRewardsPerShare.add(additionalTokenReward.mul(1e12).div(lpSupply));
-            }
-
-            if (block.number >= token1AdditionalRewardEndBlock) {
-                token1AdditionalRewardPerBlock = 0;
             }
         }
 
@@ -324,6 +316,26 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
         for (uint256 pid = 0; pid < length; ++pid) {
             updatePool(pid);
         }
+
+        if (block.number >= token0AdditionalRewardEndBlock) {
+            token0AdditionalRewardPerBlock = 0;
+        }
+
+        if (block.number >= token1AdditionalRewardEndBlock) {
+            token1AdditionalRewardPerBlock = 0;
+        }
+    }
+
+    function isNeedMassUpdatePools() internal view returns (bool) {
+        if (token0AdditionalRewardPerBlock > 0 && block.number >= token0AdditionalRewardEndBlock) {
+            return true;
+        }
+
+        if (token1AdditionalRewardPerBlock > 0 && block.number >= token1AdditionalRewardEndBlock) {
+            return true;
+        }
+
+        return false;
     }
 
     // Stake tokens to Pool
@@ -335,8 +347,12 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
 
         // require (_amount.add(user.amount) <= maxStaking, 'exceed max stake');
 
-        updatePool(pid);
-
+        if (isNeedMassUpdatePools()) {
+            massUpdatePools();
+        } else {
+            updatePool(pid);
+        }
+        
         uint256 oldBal = pool.lpToken.balanceOf(address(poolVault));
         pool.lpToken.safeTransferFrom(address(msgSender()), address(poolVault), _amount);
         _amount = pool.lpToken.balanceOf(address(poolVault)).sub(oldBal);
@@ -365,6 +381,14 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
         for(uint256 i = 0; i < len; ++i) {
             harvest(user.stakingIds.at(i));
         }
+
+        if (block.number >= token0AdditionalRewardEndBlock) {
+            token0AdditionalRewardPerBlock = 0;
+        }
+
+        if (block.number >= token1AdditionalRewardEndBlock) {
+            token1AdditionalRewardPerBlock = 0;
+        }
     }
 
     function harvestPool(uint256 pid) public {
@@ -378,6 +402,10 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
                 continue;
             }
             harvest(id);
+        }
+
+        if (isNeedMassUpdatePools()) {
+            massUpdatePools();
         }
     }
 

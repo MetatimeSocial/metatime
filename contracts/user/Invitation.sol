@@ -103,7 +103,7 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
 
     function lockCode(bytes32 halfHash) public {
         CodeLock storage cl = codeLock[halfHash];
-        require(cl.lockedAt.add(codeLockDuration) < block.timestamp, "already locked");
+        require(cl.lockedAt.add(codeLockDuration) > block.timestamp, "already locked");
 
         cl.user = msgSender();
         cl.lockedAt = block.timestamp;
