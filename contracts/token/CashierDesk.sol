@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../governance/InitializableOwner.sol";
 import "../interfaces/IBurnableERC20.sol";
 import "../base/BasicMetaTransaction.sol";
+import "../pools/MutiRewardPool.sol";
 
 contract CashierDesk is InitializableOwner, BasicMetaTransaction {
     using SafeERC20 for IERC20;
@@ -30,7 +31,7 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
         uint256 timestamp
     );
 
-    event WithdrawToAddress(
+    event WithdrawToMutiRewardPool(
         address indexed sender,
         address indexed token,
         uint256 value,
@@ -136,13 +137,16 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
         return true;
     }
 
-    function withdrawToAddress(address token, uint256 balance) public onlyCaller returns(bool){
+    function withdrawToMutiRewardPool(address token, address mulPool, uint256 amount, uint256 blockNumber) public onlyCaller returns(bool){
         require(_support_token.contains(token) == true, "cant support token.");
-         
-        IERC20 erc20 = IERC20(token);
-        erc20.safeTransfer(token, balance);
 
-        emit WithdrawToAddress(msgSender(), token, balance, block.timestamp);
+        IERC20 erc20 = IERC20(token);
+        erc20.approve(address(mulPool), amount);
+
+        MutiRewardPool pool = MutiRewardPool(mulPool);
+        pool.addAdditionalRewards(erc20, amount, blockNumber);
+
+        emit WithdrawToMutiRewardPool(msgSender(), token, amount, block.timestamp);
         return true;
     }
 
