@@ -2,7 +2,6 @@
 pragma solidity =0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
@@ -10,9 +9,10 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "../interfaces/IERC20Metadata.sol";
 import "./PoolVault.sol";
 import "../base/BasicMetaTransaction.sol";
+import "../governance/InitializableOwner.sol";
 
 
-contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
+contract MutiRewardPool is InitializableOwner, IERC20, BasicMetaTransaction {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -133,7 +133,11 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
     event Harvest(address indexed user, uint256 pid, uint256 stakingId, uint256 reward0Amount, uint256 reward1Amount);
     event Donate(address indexed user, uint256 pid, address donteToken, uint256 donateAmount, uint256 realAmount);
 
-    constructor(
+    constructor() public {
+        
+    }
+
+    function initialize(
         IERC20 _depositToken,
         IERC20 _rewardToken0,
         IERC20 _rewardToken1,
@@ -142,6 +146,10 @@ contract MutiRewardPool is Ownable, IERC20, BasicMetaTransaction {
         uint256 _startBlock,
         uint256 _bonusEndBlock
     ) public {
+
+        super._initialize();
+
+        BONUS_MULTIPLIER = 1;
         depositToken = _depositToken;
         rewardToken0 = _rewardToken0;
         rewardToken1 = _rewardToken1;
