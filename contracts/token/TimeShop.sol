@@ -376,7 +376,7 @@ contract TimeShop is InitializableOwner, ReentrancyGuard, BasicMetaTransaction {
         }
 
         uint256 remainingBlocks = t0areb > block.number ? t0areb.sub(block.number) : 0;
-        remainingBlocks = 5184000 > remainingBlocks ? 5184000 - remainingBlocks : 5184000;
+        remainingBlocks = 5184000 > remainingBlocks ? 5184000 - remainingBlocks : 0;
       
         m_time_pool.addAdditionalRewards(m_dsg_token, pool_slow_amount, remainingBlocks);
 
