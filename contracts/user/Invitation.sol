@@ -2,6 +2,7 @@
 pragma solidity =0.6.12;
 pragma experimental ABIEncoderV2;
 
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
@@ -10,7 +11,7 @@ import "../base/BasicMetaTransaction.sol";
 import "../interfaces/IDsgNft.sol";
 import "../interfaces/IUserProfile.sol";
 
-contract Invitation is InitializableOwner, BasicMetaTransaction {
+contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard {
 
     using SafeMath for uint256;
 
@@ -70,6 +71,10 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
 
     uint256 public created_count = 0;
 
+    /// upgrade
+    uint256 public min_nft_value;
+    bool public switch_buy_nft;
+
     constructor() public {
 
     }
@@ -82,6 +87,8 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
         userProfile = IUserProfile(userProfile_);
         codeLockDuration = 10 minutes;
         maxGenCodeCount = 3;
+        switch_buy_nft = false;
+        min_nft_value = 1 *(10**18);
     }
 
     // codeHash: keccak256(code)
@@ -108,8 +115,10 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
 
     function lockCode(bytes32 halfHash) public {
         CodeLock storage cl = codeLock[halfHash];
-        require(cl.lockedAt.add(codeLockDuration) > block.timestamp, "already locked");
-
+        if (cl.lockedAt != 0){
+             require(cl.lockedAt.add(codeLockDuration) < block.timestamp, "already locked");
+        }
+    
         cl.user = msgSender();
         cl.lockedAt = block.timestamp;
 
@@ -118,6 +127,7 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
 
     function exchange(string memory nickname, string calldata code, uint256 created, uint256 bg_color) public returns(uint256 createTokenID) {
         require(_nft_address[created] == address(0), "id is crated.");
+        require(checkTokenID(created) == true, "invalid created id.");
         require(MAX_COLOR >=  bg_color, "invalid is color.");
 
         bytes32 codeHash = keccak256(bytes(code));
@@ -133,19 +143,23 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
         string memory res = uint256ToString(created);
         
         //mint nft.
-        uint256 createdID = _toToken.mint(address(this), "DSG Avatar",  0, 0, res, address(this));
+        uint256 createdID = _toToken.mint(address(this), "Metaverse ape yacht club",  0, 0, res, address(this));
 
         // record 
         _nft_address[created] = msgSender();
 
-        nft.approve(address(userProfile), createdID);
-        userProfile.createProfileToUser(msgSender(), nickname, address(nft), createdID, info.generator);
-        
+        _toToken.approve(address(userProfile), createdID);
+        userProfile.createProfileToUser(msgSender(), nickname, address(_toToken), createdID, info.generator);
+
+        created_count++;
         // emit event.
         emit Exchange(msg.sender, code, createdID, created, bg_color);
         
         return createdID;
     }
+
+   
+
 
     function setMaxDepth(uint8 index, uint8 limit) onlyOwner public {
         require(index < MAX_DEPTH, "outof index(16).");
@@ -232,6 +246,8 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
         return dif;
     }
 
+    
+
     function uint256ToString(uint i) public pure returns (string memory) {
         
         if (i == 0) return "0";
@@ -286,4 +302,39 @@ contract Invitation is InitializableOwner, BasicMetaTransaction {
         
         return bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"));
     }
+
+    modifier switch_buy_status() {
+        require(switch_buy_nft == true, "end.");
+        _;
+    }
+    function Exchange_NFT(uint256 created, uint256 bg_color) public payable switch_buy_status nonReentrant {
+        require(_nft_address[created] == address(0), "id is crated.");
+        require(checkTokenID(created) == true, "invalid created id.");
+        require(MAX_COLOR >=  bg_color, "invalid is color.");
+        require(msg.value == min_nft_value, "invliad value.");
+
+        _nft_address[created] = msgSender();
+        string memory res = uint256ToString(created);
+        uint256 createdID = _toToken.mint(msgSender(), "Metaverse ape yacht club",  0, 0, res, address(this));
+
+        created_count++;
+        // emit event.
+        emit Exchange(msg.sender, "", createdID, created, bg_color);
+    }
+
+    function set_buy_nft_value(uint256 value) public onlyOwner{
+        min_nft_value = value;
+    }
+
+    function switch_status(bool status) public onlyOwner {
+        switch_buy_nft = status;
+    }
+
+    function WithdrawValue() public payable onlyOwner nonReentrant {
+        // require(address(this).call.value(100)(), "Call failed"); // solhint-disable-line avoid-call-value
+        uint256 total_value = address(this).balance;
+        (bool success,) = owner().call{value:total_value}("");
+        require(success, "withdraw failed.");
+    }
+
 }
