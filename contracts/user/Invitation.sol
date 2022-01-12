@@ -4,12 +4,14 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../governance/InitializableOwner.sol";
 import "../base/BasicMetaTransaction.sol";
 import "../interfaces/IDsgNft.sol";
 import "../interfaces/IUserProfile.sol";
+import "../interfaces/IBurnableERC20.sol";
 
 contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard {
 
@@ -75,6 +77,13 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
     uint256 public min_nft_value;
     bool public switch_buy_nft;
 
+    /// upgrade nft ADB
+    event MintMKDABNFT(address indexed sender, uint256 indexed value, uint256 indexed nfs);
+    IDsgNft public METAYC_ADB;
+    IBurnableERC20 public _MEYAYC_ADB_FragmentToken;
+    uint256 public m_price;
+
+
     constructor() public {
 
     }
@@ -129,6 +138,8 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         require(_nft_address[created] == address(0), "id is crated.");
         require(checkTokenID(created) == true, "invalid created id.");
         require(MAX_COLOR >=  bg_color, "invalid is color.");
+        // alpha only use 0xff.
+        require(bg_color & 0xff ==  0xff, "alpha only 0xff.");
 
         bytes32 codeHash = keccak256(bytes(code));
         CodeInfo storage info = codeInfo[codeHash];
@@ -141,7 +152,6 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
 
 
         string memory res = uint256ToString(created);
-        
         //mint nft.
         uint256 createdID = _toToken.mint(address(this), "Metaverse ape yacht club",  0, 0, res, address(this));
 
@@ -281,6 +291,11 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         toToken_ = address(_toToken);
     }
 
+    function getCreatedLimit() public view returns(uint256 limit , uint256 created){
+        limit = 20000;
+        created = created_count;
+    }
+
     function getCodeView(bytes32 codeHash) public view returns(address lockUser, uint256 lockedAt, address generator, uint8 state) {
         CodeLock storage cl = codeLock[codeHash];
         CodeInfo storage ci = codeInfo[codeHash];
@@ -307,10 +322,13 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         require(switch_buy_nft == true, "end.");
         _;
     }
+
     function Exchange_NFT(uint256 created, uint256 bg_color) public payable switch_buy_status nonReentrant {
         require(_nft_address[created] == address(0), "id is crated.");
         require(checkTokenID(created) == true, "invalid created id.");
         require(MAX_COLOR >=  bg_color, "invalid is color.");
+        // alpha only use 0xff.
+        require(bg_color & 0xff ==  0xff, "alpha only 0xff.");
         require(msg.value == min_nft_value, "invliad value.");
 
         _nft_address[created] = msgSender();
@@ -319,7 +337,7 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
 
         created_count++;
         // emit event.
-        emit Exchange(msg.sender, "", createdID, created, bg_color);
+        emit Exchange(msgSender(), "", createdID, created, bg_color);
     }
 
     function set_buy_nft_value(uint256 value) public onlyOwner{
@@ -337,4 +355,70 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         require(success, "withdraw failed.");
     }
 
+    /// 
+    function set_METAYC_ADB_token(address adb, address Fragment_adb) public onlyOwner {
+        METAYC_ADB = IDsgNft(adb);
+        _MEYAYC_ADB_FragmentToken = IBurnableERC20(Fragment_adb);
+       
+    }
+
+    function set_price(uint256 price) public onlyOwner{
+        m_price = price;
+    }
+
+    function Exhcange_METAYC_ADB(uint256 nft_id, uint256 created, uint256 bg_color) public{
+        require(_nft_address[created] == address(0), "id is crated.");
+        require(checkTokenID(created) == true, "invalid created id.");
+        require(MAX_COLOR >=  bg_color, "invalid is color.");
+        // alpha only use 0xff.
+        require(bg_color & 0xff ==  0xff, "alpha only 0xff.");
+        //
+        require(msgSender() == METAYC_ADB.ownerOf(nft_id), "Only NFT owner can register");
+        METAYC_ADB.safeTransferFrom(msgSender(), address(this), nft_id);
+
+        // burn nft.
+        METAYC_ADB.burn(nft_id);
+
+        // created
+        string memory res = uint256ToString(created);
+        //mint nft.
+        uint256 createdID = _toToken.mint(msgSender(), "Metaverse ape yacht club",  0, 0, res, msgSender());
+
+        created_count++;
+        // emit event.
+        emit Exchange(msgSender(), "", createdID, created, bg_color);
+    }
+
+    /*
+     */
+    function buyMKDADBNFT(uint256 amount) public returns(bool) {
+        require(amount > 0, "amount < price");
+        // how many ticketsNFT.
+        uint256 nfts = amount.div(m_price);
+
+        // cost amount.
+        uint256 value = nfts.mul(m_price);
+        require(nfts > 0, "nfts not enougt amount.");
+        require(value > 0, "value not enougt amount.");
+
+        bool ret = _MEYAYC_ADB_FragmentToken.transferFrom(address(msgSender()), address(this), value);
+        require(ret, "transferFrom error");
+
+        for (uint256 i = 0; i < nfts; i++) {
+            METAYC_ADB.mint(msgSender(), "MKDAB",  0, 0, "MKDAB", address(this));
+        }
+        created_count += nfts;
+
+        _MEYAYC_ADB_FragmentToken.burn(value);
+
+        emit MintMKDABNFT(msgSender(), value, nfts);
+        return true;
+    }
+
+    function buy_MKDAB() public payable switch_buy_status nonReentrant {
+        require(msg.value == min_nft_value, "invliad value.");
+        METAYC_ADB.mint(msgSender(), "MKDAB",  0, 0, "MKDAB", address(this));
+        // emit event.
+        emit MintMKDABNFT(msgSender(), min_nft_value, 1);
+    } 
 }
