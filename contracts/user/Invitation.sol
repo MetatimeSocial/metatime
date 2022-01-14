@@ -51,6 +51,7 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
     uint8 constant MAX_DEPTH = 16;
     uint32 constant MAX_DIF = (1 << 5) - 1;
     uint8 constant MOVE = 5;
+    uint256 constant NFT_LIMIT = 20000;
 
     // parse ntf , 
     uint8[MAX_DEPTH] public tokenMax;
@@ -84,13 +85,19 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
     uint256 public m_price;
     
     // 
-    uint256 max_create_nfts;
+    uint256 public max_create_nfts;
 
     constructor() public {
 
     }
 
-    function initialize(IERC721 nft_, address _to_token, address userProfile_,address _adb, address _METAYCDBF,uint256 _price, uint256 _min_nft_value) public {
+    function initialize(
+        IERC721 nft_, 
+        address _to_token, 
+        address userProfile_, 
+        address metaYCBoard,
+        address metaYCBoardFragment
+    ) public {
         super._initialize();
 
         nft = nft_;
@@ -99,12 +106,11 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         codeLockDuration = 10 minutes;
         maxGenCodeCount = 3;
         switch_buy_nft = false;
-        min_nft_value = 1 *(10**18);
-        max_create_nfts = 20000;
-        METAYC_ADB = IDsgNft(_adb);
-        _MEYAYC_ADB_FragmentToken = IBurnableERC20(_METAYCDBF);
-        m_price = _price;
-        min_nft_value = min_nft_value;
+        min_nft_value = 3e17;
+        METAYC_ADB = IDsgNft(metaYCBoard);
+        _MEYAYC_ADB_FragmentToken = IBurnableERC20(metaYCBoardFragment);
+        m_price = 10000*(10**18);
+        max_create_nfts = NFT_LIMIT;
     }
 
     // codeHash: keccak256(code)
@@ -174,9 +180,6 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         
         return createdID;
     }
-
-   
-
 
     function setMaxDepth(uint8 index, uint8 limit) onlyOwner public {
         require(index < MAX_DEPTH, "outof index(16).");
@@ -262,8 +265,6 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         
         return dif;
     }
-
-    
 
     function uint256ToString(uint i) public pure returns (string memory) {
         
@@ -371,7 +372,6 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
     function set_METAYC_ADB_token(address adb, address Fragment_adb) public onlyOwner {
         METAYC_ADB = IDsgNft(adb);
         _MEYAYC_ADB_FragmentToken = IBurnableERC20(Fragment_adb);
-       
     }
 
     function set_price(uint256 price) public onlyOwner{
@@ -421,7 +421,7 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         require(ret, "transferFrom error");
 
         for (uint256 i = 0; i < nfts; i++) {
-            METAYC_ADB.mint(msgSender(), "MKDAB",  0, 0, "MKDAB", address(this));
+            METAYC_ADB.mint(msgSender(), "METAYCDB",  0, 0, "METAYCBD", address(this));
         }
         created_count += nfts;
 
@@ -451,5 +451,4 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         created_count += nfts;
     }
     
-     
 }
