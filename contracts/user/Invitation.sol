@@ -82,13 +82,15 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
     IDsgNft public METAYC_ADB;
     IBurnableERC20 public _MEYAYC_ADB_FragmentToken;
     uint256 public m_price;
-
+    
+    // 
+    uint256 max_create_nfts;
 
     constructor() public {
 
     }
 
-    function initialize(IERC721 nft_, address _to_token, address userProfile_) public {
+    function initialize(IERC721 nft_, address _to_token, address userProfile_,address _adb, address _METAYCDBF,uint256 _price, uint256 _min_nft_value) public {
         super._initialize();
 
         nft = nft_;
@@ -98,6 +100,11 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         maxGenCodeCount = 3;
         switch_buy_nft = false;
         min_nft_value = 1 *(10**18);
+        max_create_nfts = 20000;
+        METAYC_ADB = IDsgNft(_adb);
+        _MEYAYC_ADB_FragmentToken = IBurnableERC20(_METAYCDBF);
+        m_price = _price;
+        min_nft_value = min_nft_value;
     }
 
     // codeHash: keccak256(code)
@@ -134,7 +141,7 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         emit LockEvent(msgSender(), block.timestamp, halfHash);
     }
 
-    function exchange(string memory nickname, string calldata code, uint256 created, uint256 bg_color) public returns(uint256 createTokenID) {
+    function exchange(string memory nickname, string calldata code, uint256 created, uint256 bg_color)  public limitCreated returns(uint256 createTokenID) {
         require(_nft_address[created] == address(0), "id is crated.");
         require(checkTokenID(created) == true, "invalid created id.");
         require(MAX_COLOR >=  bg_color, "invalid is color.");
@@ -292,7 +299,7 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
     }
 
     function getCreatedLimit() public view returns(uint256 limit , uint256 created){
-        limit = 20000;
+        limit = max_create_nfts;
         created = created_count;
     }
 
@@ -323,7 +330,12 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         _;
     }
 
-    function Exchange_NFT(uint256 created, uint256 bg_color) public payable switch_buy_status nonReentrant {
+    modifier limitCreated() {
+        require(created_count < max_create_nfts, "out of limit.");
+        _;
+    }
+
+    function Exchange_NFT(uint256 created, uint256 bg_color)  public payable limitCreated switch_buy_status nonReentrant {
         require(_nft_address[created] == address(0), "id is crated.");
         require(checkTokenID(created) == true, "invalid created id.");
         require(MAX_COLOR >=  bg_color, "invalid is color.");
@@ -366,7 +378,11 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         m_price = price;
     }
 
-    function Exhcange_METAYC_ADB(uint256 nft_id, uint256 created, uint256 bg_color) public{
+    function set_max_created_number(uint256 number) public onlyOwner{
+        max_create_nfts = number;
+    }
+
+    function Exhcange_METAYC_ADB(uint256 nft_id, uint256 created, uint256 bg_color)  public  {
         require(_nft_address[created] == address(0), "id is crated.");
         require(checkTokenID(created) == true, "invalid created id.");
         require(MAX_COLOR >=  bg_color, "invalid is color.");
@@ -384,14 +400,13 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         //mint nft.
         uint256 createdID = _toToken.mint(msgSender(), "Metaverse ape yacht club",  0, 0, res, msgSender());
 
-        created_count++;
         // emit event.
         emit Exchange(msgSender(), "", createdID, created, bg_color);
     }
 
     /*
      */
-    function buyMKDADBNFT(uint256 amount) public returns(bool) {
+    function buyMKDADBNFT(uint256 amount)  public limitCreated returns(bool) {
         require(amount > 0, "amount < price");
         // how many ticketsNFT.
         uint256 nfts = amount.div(m_price);
@@ -400,6 +415,7 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         uint256 value = nfts.mul(m_price);
         require(nfts > 0, "nfts not enougt amount.");
         require(value > 0, "value not enougt amount.");
+        require(max_create_nfts >= created_count + nfts, "out of number.");
 
         bool ret = _MEYAYC_ADB_FragmentToken.transferFrom(address(msgSender()), address(this), value);
         require(ret, "transferFrom error");
@@ -415,10 +431,25 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         return true;
     }
 
-    function buy_MKDAB() public payable switch_buy_status nonReentrant {
-        require(msg.value == min_nft_value, "invliad value.");
-        METAYC_ADB.mint(msgSender(), "MKDAB",  0, 0, "MKDAB", address(this));
-        // emit event.
-        emit MintMKDABNFT(msgSender(), min_nft_value, 1);
-    } 
+    function buy_MKDAB() public payable limitCreated switch_buy_status nonReentrant {
+        uint256 amount = msg.value;
+        // how many ticketsNFT.
+        uint256 nfts = amount.div(min_nft_value);
+
+        // cost amount.
+        uint256 value = nfts.mul(min_nft_value);
+        
+        require(nfts > 0, "nfts not enougt amount.");
+        require(value > 0, "value not enougt amount.");
+        require(max_create_nfts >= created_count + nfts, "out of number.");
+
+        for (uint256 i = 0; i < nfts; i++) {
+             METAYC_ADB.mint(msgSender(), "MKDAB",  0, 0, "MKDAB", address(this));
+            // emit event.
+            emit MintMKDABNFT(msgSender(), min_nft_value, 1);
+        } 
+        created_count += nfts;
+    }
+    
+     
 }
