@@ -368,11 +368,6 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         require(success, "withdraw failed.");
     }
 
-    /// 
-    function set_METAYC_ADB_token(address adb, address Fragment_adb) public onlyOwner {
-        METAYC_ADB = IDsgNft(adb);
-        _MEYAYC_ADB_FragmentToken = IBurnableERC20(Fragment_adb);
-    }
 
     function set_price(uint256 price) public onlyOwner{
         m_price = price;
