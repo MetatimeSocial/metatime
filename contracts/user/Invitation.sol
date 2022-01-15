@@ -444,7 +444,7 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         require(max_create_nfts >= created_count + nfts, "out of number.");
 
         for (uint256 i = 0; i < nfts; i++) {
-             METAYC_ADB.mint(msgSender(), "MKDAB",  0, 0, "MKDAB", address(this));
+             METAYC_ADB.mint(msgSender(), "METAYCDB",  0, 0, "METAYCBD", address(this));
             // emit event.
             emit MintMKDABNFT(msgSender(), min_nft_value, 1);
         } 
