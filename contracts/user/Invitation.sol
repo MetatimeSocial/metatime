@@ -86,6 +86,9 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
     
     // 
     uint256 public max_create_nfts;
+    // add limit
+    uint256 public buy_adb_count;
+    uint256 public limit_buy_adb;
 
     constructor() public {
 
@@ -299,9 +302,11 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         toToken_ = address(_toToken);
     }
 
-    function getCreatedLimit() public view returns(uint256 limit , uint256 created){
+    function getCreatedLimit() public view returns(uint256 limit, uint256 created, uint256 buy_count, uint256 buy_max){
         limit = max_create_nfts;
         created = created_count;
+        buy_count = buy_adb_count;
+        buy_max = limit_buy_adb;
     }
 
     function getCodeView(bytes32 codeHash) public view returns(address lockUser, uint256 lockedAt, address generator, uint8 state) {
@@ -343,12 +348,14 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         // alpha only use 0xff.
         require(bg_color & 0xff ==  0xff, "alpha only 0xff.");
         require(msg.value == min_nft_value, "invliad value.");
+        require(limit_buy_adb >= buy_adb_count + 1, "out of number.");
 
         _nft_address[created] = msgSender();
         string memory res = uint256ToString(created);
         uint256 createdID = _toToken.mint(msgSender(), "Metaverse ape yacht club",  0, 0, res, address(this));
 
         created_count++;
+        buy_adb_count++;
         // emit event.
         emit Exchange(msgSender(), "", createdID, created, bg_color);
     }
@@ -375,6 +382,15 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
 
     function set_max_created_number(uint256 number) public onlyOwner{
         max_create_nfts = number;
+    }
+    
+    function set_max_buy_count() public onlyOwner {
+        uint256 total_value = address(this).balance;
+        buy_adb_count = total_value.div(min_nft_value);
+    }
+
+    function set_buy_limit(uint256 limit) public onlyOwner{
+        limit_buy_adb = limit;
     }
 
     function Exhcange_METAYC_ADB(uint256 nft_id, uint256 created, uint256 bg_color)  public  {
@@ -437,12 +453,14 @@ contract Invitation is InitializableOwner, BasicMetaTransaction, ReentrancyGuard
         require(nfts > 0, "nfts not enougt amount.");
         require(value > 0, "value not enougt amount.");
         require(max_create_nfts >= created_count + nfts, "out of number.");
+        require(limit_buy_adb >= buy_adb_count + nfts, "out of number.");
 
         for (uint256 i = 0; i < nfts; i++) {
              METAYC_ADB.mint(msgSender(), "METAYCDB",  0, 0, "METAYCBD", address(this));
             // emit event.
             emit MintMKDABNFT(msgSender(), min_nft_value, 1);
         } 
+        buy_adb_count += nfts;
         created_count += nfts;
     }
     
