@@ -49,6 +49,9 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
     mapping(address => uint256) public total_charge;
     mapping(address => uint256) public total_burn;
 
+    // switch chain token.
+    bool public allow_chain;
+
     constructor() public {
         initialize();
     }
@@ -105,6 +108,17 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
         return true;
     }
 
+    function chargeChainToken() public payable returns (bool) {
+        require(allow_chain == true, "dont allow.");
+        // use 0x0000000000000000000000000000000000000001 .
+        emit ChargeToken(msgSender(), address(1), msg.value, block.timestamp);
+        return true;
+    }
+
+    function set_allow_chain(bool allow) public onlyOwner returns (bool) {
+        allow_chain = allow;
+    }
+
     function Withdraw(
         address token,
         address[] memory users,
@@ -116,28 +130,55 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
         IERC20 erc20 = IERC20(token);
 
         for (uint256 i = 0; i < users.length; i++) {
-
             erc20.safeTransfer(users[i], values[i]);
 
             emit WithdrawToken(users[i], token, values[i], block.timestamp);
         }
         return true;
     }
-   
-    function burnToken(
-        address token,
-        uint256 total
-    ) public onlyCaller returns (bool) {
+
+    function WithdrawChain(address[] memory users, uint256[] memory values)
+        public
+        payable
+        onlyCaller
+        returns (bool)
+    {
+        require(allow_chain == true, "dont allow.");
+        for (uint256 i = 0; i < users.length; i++) {
+            address to_address = users[i];
+            (bool success, ) = to_address.call{value: values[i]}("");
+            require(success, "withdraw failed.");
+
+            emit WithdrawToken(
+                users[i],
+                address(1),
+                values[i],
+                block.timestamp
+            );
+        }
+        return true;
+    }
+
+    function burnToken(address token, uint256 total)
+        public
+        onlyCaller
+        returns (bool)
+    {
         require(_support_token.contains(token) == true, "cant support token.");
 
         IBurnableERC20 erc20 = IBurnableERC20(token);
-        
+
         total_burn[token] += total;
         erc20.burn(total);
         return true;
     }
 
-    function withdrawToMutiRewardPool(address token, address mulPool, uint256 amount, uint256 blockNumber) public onlyCaller returns(bool){
+    function withdrawToMutiRewardPool(
+        address token,
+        address mulPool,
+        uint256 amount,
+        uint256 blockNumber
+    ) public onlyCaller returns (bool) {
         require(_support_token.contains(token) == true, "cant support token.");
 
         IERC20 erc20 = IERC20(token);
@@ -146,8 +187,12 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
         MutiRewardPool pool = MutiRewardPool(mulPool);
         pool.addAdditionalRewards(erc20, amount, blockNumber);
 
-        emit WithdrawToMutiRewardPool(msgSender(), token, amount, block.timestamp);
+        emit WithdrawToMutiRewardPool(
+            msgSender(),
+            token,
+            amount,
+            block.timestamp
+        );
         return true;
     }
-
 }
