@@ -110,6 +110,7 @@ contract CashierDesk is InitializableOwner, BasicMetaTransaction {
 
     function chargeChainToken() public payable returns (bool) {
         require(allow_chain == true, "dont allow.");
+        require(msg.value > 0 , "value > 0.");
         // use 0x0000000000000000000000000000000000000001 .
         emit ChargeToken(msgSender(), address(1), msg.value, block.timestamp);
         return true;
