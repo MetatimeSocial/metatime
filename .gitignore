@@ -11,3 +11,4 @@ build
 test
 .deps
 yarn.lock
+contracts/test
