@@ -283,6 +283,10 @@ contract Tribe is
             require(feeAmount == 0, "feeAmount must 0.");
             require(validDate == 0, "validDate must 0.");
         }
+        if (validDate > 0){
+            /// 10 years
+            require(validDate <= 315360000, "out of max.");
+        }
 
         require(supportNFT(nftAddress) == true, "cant support nft token.");
 
@@ -333,10 +337,10 @@ contract Tribe is
 
         {
             TribeNftInfo storage nftInfo = extraTribesNFTInfo[startID];
-            nftInfo.ownerNFTName = "Tribe Host NFT";
+            nftInfo.ownerNFTName = "Tribe Chief NFT";
             nftInfo.ownerNFTImage = logo;
             nftInfo
-                .ownerNFTIntroduction = "Own the Tribe Host NFT you can enjoy the tribe host rights.";
+                .ownerNFTIntroduction = "Own the Tribe Chief NFT you can enjoy the tribe chief rights.";
         }
 
         startID++;
@@ -387,7 +391,7 @@ contract Tribe is
         // mint nft to.
         uint256 createdID = _tribe_nft.mint(
             msgSender(),
-            "Tribe Host NFT",
+            "Tribe Trief NFT",
             nftInfo.ownerNFTIntroduction,
             info.logo,
             msgSender(),
@@ -416,7 +420,7 @@ contract Tribe is
         //
         TribeInfoExtra storage extra = extraTribesInfo[tribe_id];
         require(extra.owner_nft_id == nft_id, "error nft id.");
-
+        require(user_tribe_nftid[msgSender()][tribe_id] == 0, "ready stake member.");
         //
         IERC721 nftToken = IERC721(_tribe_nft);
         require(msgSender() == nftToken.ownerOf(nft_id), "error owner.");
@@ -619,7 +623,7 @@ contract Tribe is
         if (info.validDate == 0) {
             return 0;
         }
-        return info.validDate + block.timestamp;
+        return info.validDate.add(block.timestamp);
     }
 
     function rollbackNFTFromTribe(uint256 nft_id)
@@ -639,8 +643,7 @@ contract Tribe is
 
         
 
-        // reset
-        user_tribe_nftid[msgSender()][tribe_nft.tribe_id] = 0;
+     
 
         uint256 rollbackAmount = getRollbackAmount(nft_id);
 
@@ -660,6 +663,10 @@ contract Tribe is
                 require(ok, "transfer token error.");
             }
         }
+        
+        // reset
+        user_tribe_nftid[tribe_nft.user][tribe_nft.tribe_id] = 0;
+
         tribe_nft.user = address(0);
         emit DeleteTribeNFT(msgSender(), nft_id, block.timestamp);
         return nft_id;
@@ -670,11 +677,11 @@ contract Tribe is
         if (tribe_nft.validDate == 0) {
             return tribe_nft.feeAmount;
         }
-        uint256 end_time = tribe_nft.startTime + tribe_nft.validDate;
+        uint256 end_time = tribe_nft.startTime.add(tribe_nft.validDate);
         if (end_time <= block.timestamp) {
             return 0;
         }
-        uint256 outOfTime = end_time - block.timestamp;
+        uint256 outOfTime = end_time.sub(block.timestamp);
         uint256 roll_back_amount = tribe_nft.feeAmount.mul(outOfTime).div(
             tribe_nft.validDate
         );
