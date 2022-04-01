@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../governance/InitializableOwner.sol";
 import "../base/BasicMetaTransaction.sol";
 import "../interfaces/IDsgNft.sol";
+import "../interfaces/IBurnableERC20.sol";
 
 contract TribeTickets is InitializableOwner, BasicMetaTransaction {
     using SafeMath for uint256;
@@ -42,6 +43,10 @@ contract TribeTickets is InitializableOwner, BasicMetaTransaction {
     function setMaxTickets(uint256 max) public onlyOwner returns (bool) {
         max_tickets = max;
         return true;
+    }
+
+    function burnSales(uint256 amount) public onlyOwner {
+        IBurnableERC20(address(_tickets_fragment)).burn(amount);
     }
 
     function ExchangeTicketsNFT(uint256 amount) public returns (bool) {
