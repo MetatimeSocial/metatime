@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.6.12;
+
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
@@ -223,7 +224,7 @@ contract Tribe is
     }
 
     function removeSupportFeeToken(address token) public onlyOwner {
-        if (supportsFeeToken.contains(token)){
+        if (supportsFeeToken.contains(token)) {
             supportsFeeToken.remove(token);
         }
     }
@@ -283,7 +284,7 @@ contract Tribe is
             require(feeAmount == 0, "feeAmount must 0.");
             require(validDate == 0, "validDate must 0.");
         }
-        if (validDate > 0){
+        if (validDate > 0) {
             /// 10 years
             require(validDate <= 315360000, "out of max.");
         }
@@ -380,39 +381,7 @@ contract Tribe is
     }
 
     function claimOwnerNFT(uint256 tribe_id) public {
-        TribeInfo storage info = tribesInfo[tribe_id];
-        require(info.creator == msgSender(), "not owner.");
-
-        TribeInfoExtra storage extra = extraTribesInfo[tribe_id];
-        require(extra.claimOwnerNFT == false, "init nft.");
-
-        TribeNftInfo storage nftInfo = extraTribesNFTInfo[tribe_id];
-
-        // mint nft to.
-        uint256 createdID = _tribe_nft.mint(
-            msgSender(),
-            "Tribe Trief NFT",
-            nftInfo.ownerNFTIntroduction,
-            info.logo,
-            msgSender(),
-            0
-        );
-        extra.claimOwnerNFT = true;
-        extra.owner = address(0);
-        extra.owner_nft_id = createdID;
-
-        emit ClaimNFT(
-            msgSender(),
-            tribe_id,
-            createdID,
-            info.feeToken,
-            0,
-            1,
-            0,
-            address(0),
-            0,
-            block.timestamp
-        );
+        createClaimOwner(tribe_id, msgSender());
     }
 
     /// stake
@@ -420,7 +389,10 @@ contract Tribe is
         //
         TribeInfoExtra storage extra = extraTribesInfo[tribe_id];
         require(extra.owner_nft_id == nft_id, "error nft id.");
-        require(user_tribe_nftid[msgSender()][tribe_id] == 0, "ready stake member.");
+        require(
+            user_tribe_nftid[msgSender()][tribe_id] == 0,
+            "ready stake member."
+        );
         //
         IERC721 nftToken = IERC721(_tribe_nft);
         require(msgSender() == nftToken.ownerOf(nft_id), "error owner.");
@@ -462,68 +434,7 @@ contract Tribe is
         payable
         nonReentrant
     {
-        require(checkTribeCompleteStatus(tribe_id), "tribe status error.");
-
-        /// check invalid address
-        if (invaiteAddress != address(0)) {
-            require(
-                user_tribe_nftid[invaiteAddress][tribe_id] != 0,
-                "invliad address."
-            );
-        }
-
-        /// pay fee
-        uint256 payFeeAmount = getPayFeeAmount(tribe_id);
-
-        TribeInfo storage info = tribesInfo[tribe_id];
-
-        // check pro or basic.
-        if (info.feeToken == address(_matter_token)) {
-            require(invaiteAddress == address(0), "only use pro.");
-        }
-
-        TribeNftInfo memory nft_info = extraTribesNFTInfo[tribe_id];
-        uint256 outOfTime = getValidDate(tribe_id);
-        // mint nft to.
-        uint256 createdID = _tribe_nft.mint(
-            msgSender(),
-            nft_info.memberNFTName,
-            nft_info.memberNFTIntroduction,
-            nft_info.memberNFTImage,
-            msgSender(),
-            getValidDate(tribe_id)
-        );
-
-        TribeNFTCreate storage tribe_nft = nft_claim_contracts[createdID];
-        tribe_nft.creator = msgSender();
-        tribe_nft.startTime = block.timestamp;
-        tribe_nft.validDate = info.validDate;
-        tribe_nft.feeToken = info.feeToken;
-        tribe_nft.feeAmount = payFeeAmount;
-        tribe_nft.tribe_id = tribe_id;
-
-        TribeInfoExtra storage tribeInfo = extraTribesInfo[tribe_id];
-
-        transferFeeAmountToOwner(
-            payFeeAmount,
-            info.feeToken,
-            tribeInfo.owner,
-            invaiteAddress,
-            tribeInfo.invitationRate
-        );
-
-        emit ClaimNFT(
-            msgSender(),
-            tribe_id,
-            createdID,
-            info.feeToken,
-            payFeeAmount,
-            2,
-            outOfTime,
-            invaiteAddress,
-            tribeInfo.invitationRate,
-            block.timestamp
-        );
+        createClaimMember(tribe_id, invaiteAddress, msgSender());
     }
 
     function stakeNFT(uint256 tribe_id, uint256 nft_id) public {
@@ -637,13 +548,12 @@ contract Tribe is
 
         TribeInfoExtra storage info_extra = extraTribesInfo[tribe_nft.tribe_id];
         require(info_extra.owner == msgSender(), "not owner.");
-        
+
         // check is tribe.
-        require(info_extra.owner_nft_id != nft_id, "cant delete tribe owner nft.");
-
-        
-
-     
+        require(
+            info_extra.owner_nft_id != nft_id,
+            "cant delete tribe owner nft."
+        );
 
         uint256 rollbackAmount = getRollbackAmount(nft_id);
 
@@ -663,7 +573,7 @@ contract Tribe is
                 require(ok, "transfer token error.");
             }
         }
-        
+
         // reset
         user_tribe_nftid[tribe_nft.user][tribe_nft.tribe_id] = 0;
 
@@ -796,5 +706,153 @@ contract Tribe is
         extra.invitationRate = rate;
 
         emit UpdateTribeInvitation(msgSender(), tribe_id, rate);
+    }
+
+    //// claim and stake
+    function claimStakeMember(uint256 tribe_id, address invaiteAddress)
+        public
+        payable
+        nonReentrant
+    {
+        require(user_tribe_nftid[msgSender()][tribe_id] == 0, "ready stake.");
+
+        uint256 nft_id = createClaimMember(
+            tribe_id,
+            invaiteAddress,
+            address(this)
+        );
+
+        nft_claim_contracts[nft_id].user = msgSender();
+        user_tribe_nftid[msgSender()][tribe_id] = nft_id;
+
+        emit StakeNFT(msgSender(), tribe_id, nft_id, block.timestamp);
+    }
+
+    function createClaimMember(
+        uint256 tribe_id,
+        address invaiteAddress,
+        address toaddress
+    ) internal returns (uint256 nft_id) {
+        require(checkTribeCompleteStatus(tribe_id), "err1");
+
+        /// check invalid address
+        if (invaiteAddress != address(0)) {
+            require(user_tribe_nftid[invaiteAddress][tribe_id] != 0, "err2");
+        }
+
+        TribeInfo storage info = tribesInfo[tribe_id];
+
+        // check pro or basic.
+        if (info.feeToken == address(_matter_token)) {
+            require(invaiteAddress == address(0), "err3");
+        }
+
+        uint256 outOfTime = getValidDate(tribe_id);
+        // mint nft to.
+        uint256 createdID = _tribe_nft.mint(
+            toaddress,
+            extraTribesNFTInfo[tribe_id].memberNFTName,
+            extraTribesNFTInfo[tribe_id].memberNFTIntroduction,
+            extraTribesNFTInfo[tribe_id].memberNFTImage,
+            msgSender(),
+            outOfTime
+        );
+
+        /// pay fee
+        uint256 payFeeAmount = getPayFeeAmount(tribe_id);
+
+        {
+            TribeNFTCreate storage tribe_nft = nft_claim_contracts[createdID];
+            tribe_nft.creator = msgSender();
+            tribe_nft.startTime = block.timestamp;
+            tribe_nft.validDate = info.validDate;
+            tribe_nft.feeToken = info.feeToken;
+            tribe_nft.feeAmount = payFeeAmount;
+            tribe_nft.tribe_id = tribe_id;
+        }
+
+        {
+            TribeInfoExtra storage tribeInfo = extraTribesInfo[tribe_id];
+            transferFeeAmountToOwner(
+                payFeeAmount,
+                info.feeToken,
+                tribeInfo.owner,
+                invaiteAddress,
+                tribeInfo.invitationRate
+            );
+
+            emit ClaimNFT(
+                msgSender(),
+                tribe_id,
+                createdID,
+                tribesInfo[tribe_id].feeToken,
+                payFeeAmount,
+                2,
+                outOfTime,
+                invaiteAddress,
+                tribeInfo.invitationRate,
+                block.timestamp
+            );
+        }
+
+        return createdID;
+    }
+
+    function claimStakeChief(uint256 tribe_id) public {
+        require(
+            user_tribe_nftid[msgSender()][tribe_id] == 0,
+            "ready stake member."
+        );
+
+        // claim
+        uint256 nft_id = createClaimOwner(tribe_id, address(this));
+        /// stake
+        extraTribesInfo[tribe_id].owner = msgSender();
+
+        user_tribe_nftid[msgSender()][tribe_id] = nft_id;
+
+        emit StakeNFT(msgSender(), tribe_id, nft_id, block.timestamp);
+    }
+
+    /// claim tirbe chief and stake it.
+    function createClaimOwner(uint256 tribe_id, address toaddress)
+        internal
+        returns (uint256 nft_id)
+    {
+        TribeInfo storage info = tribesInfo[tribe_id];
+        require(info.creator == msgSender(), "not owner.");
+
+        TribeInfoExtra storage extra = extraTribesInfo[tribe_id];
+        require(extra.claimOwnerNFT == false, "init nft.");
+
+        TribeNftInfo storage nftInfo = extraTribesNFTInfo[tribe_id];
+
+        // mint nft to.
+        uint256 createdID = _tribe_nft.mint(
+            toaddress,
+            "Tribe Trief NFT",
+            nftInfo.ownerNFTIntroduction,
+            info.logo,
+            msgSender(),
+            0
+        );
+        extra.claimOwnerNFT = true;
+        extra.owner = address(0);
+        extra.owner_nft_id = createdID;
+
+        emit ClaimNFT(
+            msgSender(),
+            tribe_id,
+            createdID,
+            info.feeToken,
+            0,
+            1,
+            0,
+            address(0),
+            0,
+            block.timestamp
+        );
+
+        return createdID;
     }
 }
